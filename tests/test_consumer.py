@@ -70,7 +70,7 @@ class TestRegister:
 
     def test_register_invalid_version_raises(self) -> None:
         registry = ConsumerRegistry()
-        with pytest.raises(ValueError, match="MAJOR.MINOR"):  # noqa: RUF043
+        with pytest.raises(ValueError, match="MAJOR.MINOR"):
             registry.register("tool", namespaces=["trace"], schema_version="bad")
 
     def test_register_multiple(self) -> None:
@@ -167,7 +167,7 @@ class TestCompatibilityChecking:
 
     def test_check_compatible_invalid_version_raises(self) -> None:
         registry = ConsumerRegistry()
-        with pytest.raises(ValueError, match="MAJOR.MINOR"):  # noqa: RUF043
+        with pytest.raises(ValueError, match="MAJOR.MINOR"):
             registry.check_compatible("bad-version")
 
 

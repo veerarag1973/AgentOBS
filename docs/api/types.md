@@ -120,7 +120,7 @@ A one-line human-readable description of this event type.
 | `FENCE_VALIDATION_FAILED` | `llm.fence.validation.failed` | Output-format validation failed. |
 | `FENCE_RETRY_TRIGGERED` | `llm.fence.retry.triggered` | A retry was triggered following a fence validation failure. |
 
-#### `llm.audit.*` — Tracium
+#### `llm.audit.*` — AgentOBS
 
 | Member | String value | Description |
 |--------|-------------|-------------|

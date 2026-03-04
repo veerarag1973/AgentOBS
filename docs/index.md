@@ -1,6 +1,6 @@
 # Documentation Index
 
-> **Tracium** — The reference implementation of the [AGENTOBS Standard](../RFC-0001-AGENTOBS.md) (RFC-0001), the open event-schema standard for observability of agentic AI systems.  
+> **AgentOBS** (`tracium`) — The reference implementation of the [AGENTOBS Standard](../RFC-0001-AGENTOBS.md) (RFC-0001), the open event-schema standard for observability of agentic AI systems.  
 > Current release: **1.0.0** — [Changelog](changelog.md)
 
 This index links to every documentation page in this folder.

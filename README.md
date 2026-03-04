@@ -1,4 +1,4 @@
-﻿<h1 align="center">tracium</h1>
+﻿<h1 align="center">AgentOBS</h1>
 
 <p align="center">
   <strong>The reference implementation of the AGENTOBS Standard.</strong><br/>
@@ -12,8 +12,8 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.9%2B-4c8cbf?logo=python&logoColor=white" alt="Python 3.9+"/>
   <a href="RFC-0001-AGENTOBS.md"><img src="https://img.shields.io/badge/standard-AGENTOBS_RFC--0001-4c8cbf" alt="AGENTOBS RFC-0001"/></a>
-  <img src="https://img.shields.io/badge/coverage-97%25-brightgreen" alt="97% test coverage"/>
-  <img src="https://img.shields.io/badge/tests-1791%20passing-brightgreen" alt="1791 tests"/>
+  <img src="https://img.shields.io/badge/coverage-96%25-brightgreen" alt="96% test coverage"/>
+  <img src="https://img.shields.io/badge/tests-1837%20passing-brightgreen" alt="1837 tests"/>
   <img src="https://img.shields.io/badge/dependencies-zero-brightgreen" alt="Zero dependencies"/>
   <a href="docs/index.md"><img src="https://img.shields.io/badge/docs-local-4c8cbf" alt="Documentation"/></a>
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"/>
@@ -23,11 +23,11 @@
 
 ## What is this?
 
-``tracium`` is the **reference implementation of [RFC-0001 AGENTOBS](RFC-0001-AGENTOBS.md)** — the open event-schema standard for observability of agentic AI systems.
+**AgentOBS** (``tracium``) is the **reference implementation of [RFC-0001 AGENTOBS](RFC-0001-AGENTOBS.md)** — the open event-schema standard for observability of agentic AI systems.
 
 AGENTOBS defines a structured, typed event envelope that every LLM-adjacent instrumentation tool can emit and every observability backend can consume. It covers the full lifecycle: event envelopes, agent span hierarchies, token and cost models, HMAC audit chains, PII redaction, OTLP-compatible export, and schema governance.
 
-> Think of ``tracium`` as a **universal receipt format** for your AI application.
+> Think of **AgentOBS** as a **universal receipt format** for your AI application.
 > Every time your app calls a language model, makes a decision, redacts private data, or checks a guardrail — this library gives that action a consistent, structured record that any tool in your stack can read.
 
 ---
@@ -36,7 +36,7 @@ AGENTOBS defines a structured, typed event envelope that every LLM-adjacent inst
 
 Without a shared schema, every team invents their own log format. With ``tracium`` (and the AGENTOBS standard it implements), your logs, dashboards, compliance reports, and monitoring tools all speak the same language — automatically.
 
-| Without tracium | With tracium |
+| Without AgentOBS | With AgentOBS |
 |---|---|
 | Each service logs events differently | Every event follows the same structure |
 | Hard to audit who saw what data | Built-in HMAC signing creates a tamper-proof audit trail |
@@ -414,8 +414,8 @@ event = Event(
 
 ## Quality standards
 
-- **1 791 tests** — unit, integration, property-based (Hypothesis), and performance benchmarks
-- **97 % line and branch coverage** — measured with ``pytest-cov``
+- **1 837 tests** — unit, integration, property-based (Hypothesis), and performance benchmarks
+- **96 % line and branch coverage** — measured with ``pytest-cov``
 - **Zero required dependencies** — the entire core runs on Python's standard library alone
 - **Typed** — full ``py.typed`` marker; works with mypy and pyright out of the box
 - **Frozen v2 trace schema** — ``llm.trace.*`` payload fields will never break between minor releases
@@ -476,14 +476,14 @@ examples/             <- Runnable sample scripts
 
 ```bash
 git clone https://github.com/veerarag1973/agentobs.git
-cd tracium
+cd agentobs
 
 python -m venv .venv
 .venv\Scripts\activate          # Windows
 # source .venv/bin/activate     # macOS / Linux
 
 pip install -e ".[dev]"
-pytest                          # run all 1 791 tests
+pytest                          # run all 1 837 tests
 ```
 
 <details>
@@ -549,7 +549,7 @@ Key rules:
 ---
 
 <p align="center">
-  Made with care for the LLM Developer Toolkit ecosystem.<br/>
+  Made with care for the AI observability community.<br/>
   <a href="docs/index.md">Docs</a> ·
   <a href="docs/quickstart.md">Quickstart</a> ·
   <a href="docs/api/index.md">API Reference</a> ·

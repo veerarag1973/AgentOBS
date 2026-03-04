@@ -1,6 +1,6 @@
 # HMAC Signing & Audit Chains
 
-tracium provides a cryptographic audit trail based on HMAC-SHA256. Every
+AgentOBS provides a cryptographic audit trail based on HMAC-SHA256. Every
 signed event carries a payload checksum and a chain signature that links it to
 its predecessor, forming a tamper-evident sequence that can detect deletions,
 reorderings, and payload modifications.

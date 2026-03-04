@@ -334,7 +334,7 @@ class TestAgentStepContextManager:
         _span_stack().clear()
 
     def test_step_outside_run_raises(self) -> None:
-        with pytest.raises(RuntimeError, match="tracer.agent_step\\(\\)"):  # noqa: RUF043, SIM117
+        with pytest.raises(RuntimeError, match="tracer.agent_step\\(\\)"):  # noqa: SIM117
             with AgentStepContextManager("step"):
                 pass
 

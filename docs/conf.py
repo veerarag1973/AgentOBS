@@ -1,25 +1,24 @@
-# Configuration file for the Sphinx documentation builder.
-#
+"""Sphinx configuration for AgentOBS documentation."""
 # For the full list of built-in configuration values, see the documentation:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 from __future__ import annotations
 
-import os
 import sys
+from pathlib import Path
 
 # Make the source package importable from docs/
-sys.path.insert(0, os.path.abspath(".."))
+sys.path.insert(0, str(Path("..").resolve()))
 
-from tracium import __version__  # noqa: E402
+from tracium import __version__
 
 # ---------------------------------------------------------------------------
 # Project information
 # ---------------------------------------------------------------------------
 
-project = "Tracium"
-copyright = "2026, LLM Toolkit Team"
-author = "LLM Toolkit Team"
+project = "AgentOBS"
+copyright = "2026, AgentOBS Contributors"
+author = "AgentOBS Contributors"
 release = __version__
 version = __version__
 
@@ -105,8 +104,8 @@ html_theme_options = {
         },
     ],
     "logo": {
-        "text": "Tracium",
-        "alt_text": "Tracium",
+        "text": "AgentOBS",
+        "alt_text": "AgentOBS",
     },
     "footer_start": ["copyright"],
     "footer_end": ["sphinx-version"],
@@ -115,8 +114,8 @@ html_theme_options = {
 }
 
 html_context = {
-    "github_user": "llm-toolkit",
-    "github_repo": "Tracium",
+    "github_user": "veerarag1973",
+    "github_repo": "agentobs",
     "github_version": "main",
     "doc_path": "docs",
 }

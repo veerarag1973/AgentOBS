@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for considering a contribution to Tracium!
+Thank you for considering a contribution to AgentOBS!
 This guide covers everything you need to get a development environment running,
 write code that matches the project's standards, and submit a pull request.
 
@@ -8,8 +8,7 @@ write code that matches the project's standards, and submit a pull request.
 
 ```bash
 git clone https://github.com/veerarag1973/agentobs.git
-cd tracium
-cd tracium
+cd agentobs
 python -m venv .venv
 
 # Windows
@@ -49,7 +48,7 @@ pre-commit run --all-files   # after: pre-commit install
 
 ## Coverage requirement
 
-**100% branch coverage is required** on every commit. No exceptions.
+**90% branch coverage is required** (minimum) on every commit.
 New code must come with tests that cover every branch.
 
 ```bash

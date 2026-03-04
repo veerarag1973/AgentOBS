@@ -1,4 +1,4 @@
-# Tracium SDK — Release Runbook
+# AgentOBS SDK — Release Runbook
 # PyPI distribution: agentobs  |  Import: tracium
 # Version: 1.0.0 — 2026-03-04
 #
@@ -22,7 +22,7 @@
 #   Phase 11  Security + privacy (HMAC signing chain, PII redaction)
 #   Phase 12  Hardening + docs + 1.0.0 (this release)
 #
-#   Tests      1776+ passing, 96.72% coverage
+#   Tests      1837+ passing, 96.36% coverage
 #
 # ─────────────────────────────────────────────────────────────────────────────
 # PREREQUISITES

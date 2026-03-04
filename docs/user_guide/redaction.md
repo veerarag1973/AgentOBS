@@ -1,6 +1,6 @@
 # PII Redaction
 
-tracium provides a field-level PII redaction framework that lets you mark
+AgentOBS provides a field-level PII redaction framework that lets you mark
 sensitive values at the point of creation and apply policies before the event
 is stored, exported, or logged.
 

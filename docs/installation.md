@@ -37,7 +37,7 @@ pip install "agentobs[all]"
 
 ```bash
 git clone https://github.com/veerarag1973/agentobs.git
-cd tracium
+cd agentobs
 python -m venv .venv
 .venv/Scripts/activate          # Windows
 # source .venv/bin/activate     # macOS / Linux

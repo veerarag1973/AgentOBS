@@ -1,6 +1,6 @@
 # Quickstart
 
-Tracium is the reference implementation of **RFC-0001 AGENTOBS** — the open
+AgentOBS is the reference implementation of **RFC-0001 AGENTOBS** — the open
 event-schema standard for observability of agentic AI systems. This page walks
 you through creating your first event, signing an audit chain, and exporting to
 OTLP — in under five minutes.
