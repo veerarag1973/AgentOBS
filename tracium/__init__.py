@@ -289,7 +289,7 @@ from tracium.ulid import generate as generate_ulid
 from tracium.ulid import validate as validate_ulid
 from tracium.validate import validate_event
 
-__version__: str = "1.0.0"
+__version__: str = "1.0.3"
 
 __all__: list[str] = [
     "PII_TYPES",
