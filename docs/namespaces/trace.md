@@ -10,8 +10,8 @@ individual LLM calls, agent steps, and full agent runs (RFC-0001 §8).
 | Class | Event type | Description |
 |-------|-----------|-------------|
 | `SpanPayload` | `llm.trace.span.completed` | Single unit of LLM work — model call, tool invocation, or sub-agent call |
-| `AgentStepPayload` | `llm.trace.agent.step.completed` | One iteration of a multi-step agent loop |
-| `AgentRunPayload` | `llm.trace.agent.run.completed` | Root summary for a complete agent run |
+| `AgentStepPayload` | `llm.trace.agent.step` | One iteration of a multi-step agent loop |
+| `AgentRunPayload` | `llm.trace.agent.completed` | Root summary for a complete agent run |
 
 ## SpanPayload — key fields
 

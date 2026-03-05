@@ -87,7 +87,7 @@ Return `True` if the event's HMAC signature is valid.
 
 **Returns:** `bool` — `True` if the signature is valid, `False` otherwise.
 
-**Raises:** `SigningError` — if the event has no `signature` field or `org_secret` is empty.
+**Raises:** `SigningError` — if `org_secret` is empty or whitespace-only.
 
 ---
 
@@ -108,7 +108,7 @@ Equivalent to: `if not verify(event, secret): raise VerificationError(event.even
 | `event` | `Event` | A previously signed event. |
 | `org_secret` | `str` | The secret used when signing. |
 
-**Raises:** `VerificationError` — if the signature does not match. `SigningError` — if the event has no signature or the secret is empty.
+**Raises:** `VerificationError` — if the signature does not match. `SigningError` — if `org_secret` is empty or whitespace-only.
 
 ---
 

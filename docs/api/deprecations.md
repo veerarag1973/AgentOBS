@@ -16,9 +16,9 @@ for usage patterns.
 class DeprecationNotice:
     event_type: str
     since: str
-    sunset: str = ""
-    replacement: str = ""
-    notes: str = ""
+    sunset: str
+    replacement: str | None = None
+    notes: str | None = None
 ```
 
 An immutable record describing when a single event type was deprecated and what
@@ -30,9 +30,9 @@ replaces it.
 |-----------|------|-------------|
 | `event_type` | `str` | The deprecated event type string. |
 | `since` | `str` | Version in which the type was deprecated (e.g. `"1.1.0"`). |
-| `sunset` | `str` | Version in which the type will be removed (e.g. `"2.0.0"`). Empty = unknown. |
-| `replacement` | `str` | Suggested replacement event type. Empty if no direct replacement. |
-| `notes` | `str` | Free-form migration guidance. |
+| `sunset` | `str` | Version in which the type will be removed (e.g. `"2.0.0"`). **Required.** |
+| `replacement` | `str \| None` | Suggested replacement event type, or `None` if there is no direct replacement. |
+| `notes` | `str \| None` | Free-form migration guidance, or `None`. |
 
 ### Methods
 
@@ -70,7 +70,7 @@ Thread-safe registry mapping event type strings to `DeprecationNotice` objects.
 
 ### Methods
 
-#### `mark_deprecated(notice: DeprecationNotice) -> None`
+#### `mark_deprecated(event_type: str, *, since: str, sunset: str, replacement: str | None = None, notes: str | None = None) -> DeprecationNotice`
 
 Register a deprecation notice.
 
@@ -78,7 +78,13 @@ Register a deprecation notice.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `notice` | `DeprecationNotice` | Notice to register. |
+| `event_type` | `str` | The event type string being deprecated. |
+| `since` | `str` | Version in which it was deprecated. |
+| `sunset` | `str` | Version in which it will be removed. |
+| `replacement` | `str \| None` | Optional replacement event type. |
+| `notes` | `str \| None` | Optional migration guidance. |
+
+**Returns:** `DeprecationNotice` — the registered notice.
 
 ---
 
@@ -123,9 +129,9 @@ Return all registered deprecation notices sorted by `event_type`.
 
 ---
 
-#### `remove(event_type: str) -> None`
+#### `remove(event_type: str) -> bool`
 
-Remove the deprecation notice for `event_type`. No-op if not found.
+Remove the deprecation notice for `event_type`. Returns `True` if a notice was removed, `False` if not found.
 
 ---
 
@@ -147,7 +153,7 @@ Return the global `DeprecationRegistry` singleton.
 
 ---
 
-### `mark_deprecated(notice: DeprecationNotice) -> None`
+### `mark_deprecated(event_type: str, *, since: str, sunset: str, replacement: str | None = None, notes: str | None = None) -> DeprecationNotice`
 
 Register a notice in the global registry.
 
@@ -176,12 +182,12 @@ from tracium.deprecations import (
     mark_deprecated, warn_if_deprecated, list_deprecated, DeprecationNotice,
 )
 
-mark_deprecated(DeprecationNotice(
-    event_type="llm.legacy.trace",
+mark_deprecated(
+    "llm.legacy.trace",
     since="1.1.0",
     sunset="2.0.0",
     replacement="llm.trace.span.completed",
-))
+)
 
 warn_if_deprecated("llm.legacy.trace")   # emits DeprecationWarning
 

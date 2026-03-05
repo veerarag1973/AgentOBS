@@ -19,24 +19,16 @@ strings, used as dict keys, and serialised without conversion:
 assert EventType.TRACE_SPAN_COMPLETED == "llm.trace.span.completed"
 ```
 
-Each member also carries `.namespace`, `.tool`, and `.description` properties.
+Each member also carries `.namespace` and `.description` properties.
 
 ### Properties
 
 #### `namespace -> str`
 
-The `llm.<tool>` namespace prefix for this event type.
+The `llm.<ns>` namespace prefix for this event type.
 
 ```python
 EventType.TRACE_SPAN_COMPLETED.namespace  # "llm.trace"
-```
-
-#### `tool -> str`
-
-The owning tool's identifier string.
-
-```python
-EventType.TRACE_SPAN_COMPLETED.tool  # "llm-trace"
 ```
 
 #### `description -> str`
@@ -45,94 +37,96 @@ A one-line human-readable description of this event type.
 
 ### Members
 
-#### `llm.diff.*` — llm-diff
+#### `llm.diff.*`
 
 | Member | String value | Description |
 |--------|-------------|-------------|
-| `DIFF_COMPARISON_STARTED` | `llm.diff.comparison.started` | A diff comparison has been initiated. |
-| `DIFF_COMPARISON_COMPLETED` | `llm.diff.comparison.completed` | A diff comparison finished successfully. |
-| `DIFF_REPORT_EXPORTED` | `llm.diff.report.exported` | A diff report has been exported to a file or sink. |
+| `DIFF_COMPUTED` | `llm.diff.computed` | A textual or semantic diff was computed between two events. |
+| `DIFF_REGRESSION_FLAGGED` | `llm.diff.regression.flagged` | A diff computation exceeded the regression similarity threshold. |
 
-#### `llm.prompt.*` — promptlock
-
-| Member | String value | Description |
-|--------|-------------|-------------|
-| `PROMPT_SAVED` | `llm.prompt.saved` | A prompt version was saved to the registry. |
-| `PROMPT_PROMOTED` | `llm.prompt.promoted` | A prompt version was promoted to a higher environment. |
-| `PROMPT_ROLLED_BACK` | `llm.prompt.rolled_back` | A prompt was rolled back to a previous version. |
-| `PROMPT_APPROVED` | `llm.prompt.approved` | A prompt version approval was recorded. |
-| `PROMPT_REJECTED` | `llm.prompt.rejected` | A prompt version was rejected in the review workflow. |
-
-#### `llm.template.*` — promptblock
+#### `llm.prompt.*`
 
 | Member | String value | Description |
 |--------|-------------|-------------|
-| `TEMPLATE_RENDERED` | `llm.template.rendered` | A prompt template was rendered with variable substitution. |
-| `TEMPLATE_VARIABLE_MISSING` | `llm.template.variable.missing` | A required template variable was absent at render time. |
-| `TEMPLATE_VALIDATION_FAILED` | `llm.template.validation.failed` | Template post-render validation did not pass. |
+| `PROMPT_RENDERED` | `llm.prompt.rendered` | A prompt template was instantiated with variable values. |
+| `PROMPT_TEMPLATE_LOADED` | `llm.prompt.template.loaded` | A prompt template was loaded from the registry. |
+| `PROMPT_VERSION_CHANGED` | `llm.prompt.version.changed` | The active version of a prompt template was updated. |
 
-#### `llm.trace.*` — llm-trace
-
-| Member | String value | Description |
-|--------|-------------|-------------|
-| `TRACE_SPAN_STARTED` | `llm.trace.span.started` | A tracing span was opened. |
-| `TRACE_SPAN_COMPLETED` | `llm.trace.span.completed` | A tracing span completed. Primary event consumed by cost/eval/board. |
-| `TRACE_TOOL_CALL_STARTED` | `llm.trace.tool_call.started` | A tool call within a span was initiated. |
-| `TRACE_TOOL_CALL_COMPLETED` | `llm.trace.tool_call.completed` | A tool call within a span completed. |
-
-#### `llm.cost.*` — llm-cost
+#### `llm.template.*`
 
 | Member | String value | Description |
 |--------|-------------|-------------|
-| `COST_RECORDED` | `llm.cost.recorded` | Token usage cost was recorded for a span. |
-| `COST_BUDGET_THRESHOLD_REACHED` | `llm.cost.budget.threshold_reached` | Cost crossed a configured warning threshold. |
-| `COST_BUDGET_EXCEEDED` | `llm.cost.budget.exceeded` | Cost exceeded the hard budget limit. |
+| `TEMPLATE_REGISTERED` | `llm.template.registered` | A new template or version was added to the registry. |
+| `TEMPLATE_VARIABLE_BOUND` | `llm.template.variable.bound` | A variable was bound to a template for a specific rendering. |
+| `TEMPLATE_VALIDATION_FAILED` | `llm.template.validation.failed` | A template could not be loaded or rendered due to validation errors. |
 
-#### `llm.eval.*` — evalkit
-
-| Member | String value | Description |
-|--------|-------------|-------------|
-| `EVAL_SCENARIO_STARTED` | `llm.eval.scenario.started` | An evaluation scenario run has started. |
-| `EVAL_SCENARIO_COMPLETED` | `llm.eval.scenario.completed` | An evaluation scenario run has finished. |
-| `EVAL_REGRESSION_FAILED` | `llm.eval.regression.failed` | An evaluation run detected a quality regression versus baseline. |
-
-#### `llm.guard.*` — promptguard
+#### `llm.trace.*`
 
 | Member | String value | Description |
 |--------|-------------|-------------|
-| `GUARD_INPUT_SCANNED` | `llm.guard.input.scanned` | An input was scanned by the guard policy. |
-| `GUARD_INPUT_BLOCKED` | `llm.guard.input.blocked` | An input was blocked by the guard policy. |
-| `GUARD_OUTPUT_FLAGGED` | `llm.guard.output.flagged` | A model output was flagged by the guard policy. |
+| `TRACE_SPAN_STARTED` | `llm.trace.span.started` | A new LLM call/tool-execution span was opened. |
+| `TRACE_SPAN_COMPLETED` | `llm.trace.span.completed` | A span completed successfully. |
+| `TRACE_SPAN_FAILED` | `llm.trace.span.failed` | A span terminated with an error or timeout. |
+| `TRACE_AGENT_STEP` | `llm.trace.agent.step` | One iteration of a multi-step agent loop. |
+| `TRACE_AGENT_COMPLETED` | `llm.trace.agent.completed` | A multi-step agent run resolved. |
+| `TRACE_REASONING_STEP` | `llm.trace.reasoning.step` | One chain-of-thought reasoning step (v2.0+). |
 
-#### `llm.redact.*` — llm-redact
-
-| Member | String value | Description |
-|--------|-------------|-------------|
-| `REDACT_PII_DETECTED` | `llm.redact.pii.detected` | PII was detected in a field. |
-| `REDACT_PII_REDACTED` | `llm.redact.pii.redacted` | A field was successfully redacted. |
-| `REDACT_SCAN_COMPLETED` | `llm.redact.scan.completed` | A PII scan of an event completed. |
-
-#### `llm.fence.*` — llm-fence
+#### `llm.cost.*`
 
 | Member | String value | Description |
 |--------|-------------|-------------|
-| `FENCE_VALIDATION_PASSED` | `llm.fence.validation.passed` | Output-format validation passed. |
-| `FENCE_VALIDATION_FAILED` | `llm.fence.validation.failed` | Output-format validation failed. |
-| `FENCE_RETRY_TRIGGERED` | `llm.fence.retry.triggered` | A retry was triggered following a fence validation failure. |
+| `COST_TOKEN_RECORDED` | `llm.cost.token.recorded` | Per-call token cost recorded. |
+| `COST_SESSION_RECORDED` | `llm.cost.session.recorded` | Session-level cost rollup recorded. |
+| `COST_ATTRIBUTED` | `llm.cost.attributed` | Cost attributed to a feature, team, or budget centre. |
 
-#### `llm.audit.*` — AgentOBS
-
-| Member | String value | Description |
-|--------|-------------|-------------|
-| `AUDIT_CHAIN_STARTED` | `llm.audit.chain.started` | A new tamper-evident audit chain was initialised. |
-| `AUDIT_KEY_ROTATED` | `llm.audit.key.rotated` | The HMAC signing key was rotated. |
-
-#### `llm.cache.*` — llm-cache
+#### `llm.eval.*`
 
 | Member | String value | Description |
 |--------|-------------|-------------|
-| `CACHE_HIT` | `llm.cache.hit` | A semantic cache returned a cached result. |
-| `CACHE_MISS` | `llm.cache.miss` | A semantic cache lookup returned no result. |
+| `EVAL_SCORE_RECORDED` | `llm.eval.score.recorded` | A quality score was attached to a span or agent run. |
+| `EVAL_REGRESSION_DETECTED` | `llm.eval.regression.detected` | A quality regression relative to baseline was detected. |
+| `EVAL_SCENARIO_STARTED` | `llm.eval.scenario.started` | An evaluation scenario run started. |
+| `EVAL_SCENARIO_COMPLETED` | `llm.eval.scenario.completed` | An evaluation scenario run completed. |
+
+#### `llm.guard.*`
+
+| Member | String value | Description |
+|--------|-------------|-------------|
+| `GUARD_INPUT_BLOCKED` | `llm.guard.input.blocked` | A model input was blocked by the safety classifier. |
+| `GUARD_INPUT_PASSED` | `llm.guard.input.passed` | A model input passed the safety classifier. |
+| `GUARD_OUTPUT_BLOCKED` | `llm.guard.output.blocked` | A model output was blocked by the safety classifier. |
+| `GUARD_OUTPUT_PASSED` | `llm.guard.output.passed` | A model output passed the safety classifier. |
+
+#### `llm.redact.*`
+
+| Member | String value | Description |
+|--------|-------------|-------------|
+| `REDACT_PII_DETECTED` | `llm.redact.pii.detected` | PII categories were found in one or more event fields. |
+| `REDACT_PHI_DETECTED` | `llm.redact.phi.detected` | PHI categories (HIPAA-regulated) were found. |
+| `REDACT_APPLIED` | `llm.redact.applied` | A RedactionPolicy was applied; sensitive values replaced. |
+
+#### `llm.fence.*`
+
+| Member | String value | Description |
+|--------|-------------|-------------|
+| `FENCE_VALIDATED` | `llm.fence.validated` | Model output passed all structural constraint checks. |
+| `FENCE_RETRY_TRIGGERED` | `llm.fence.retry.triggered` | Model output failed schema validation; retry initiated. |
+| `FENCE_MAX_RETRIES_EXCEEDED` | `llm.fence.max_retries.exceeded` | All retry attempts exhausted without conforming output. |
+
+#### `llm.audit.*`
+
+| Member | String value | Description |
+|--------|-------------|-------------|
+| `AUDIT_KEY_ROTATED` | `llm.audit.key.rotated` | The HMAC signing key was rotated (RFC-0001 §11.5). |
+
+#### `llm.cache.*`
+
+| Member | String value | Description |
+|--------|-------------|-------------|
+| `CACHE_HIT` | `llm.cache.hit` | Semantic cache returned a cached result without a new model call. |
+| `CACHE_MISS` | `llm.cache.miss` | Semantic cache lookup found no matching entry. |
+| `CACHE_EVICTED` | `llm.cache.evicted` | A cache entry was evicted (TTL, LRU, or manual invalidation). |
+| `CACHE_WRITTEN` | `llm.cache.written` | A new entry was written to the semantic cache. |
 
 ---
 
@@ -171,7 +165,7 @@ Return the `llm.<tool>` namespace of a registered event type.
 
 **Returns:** `str` — the namespace prefix (e.g. `"llm.trace"`).
 
-**Raises:** `EventTypeError` — if `event_type` is not a registered first-party type.
+**Raises:** `EventTypeError` — if `event_type` does not match the expected pattern.
 
 ---
 
@@ -179,7 +173,7 @@ Return the `llm.<tool>` namespace of a registered event type.
 
 Validate a custom (third-party) event type string.
 
-Custom event types must use the `x.<company>.<…>` prefix pattern.
+Custom event types must use a reverse-domain prefix (e.g. `com.example.<…>`).
 
 **Args:**
 
@@ -187,7 +181,7 @@ Custom event types must use the `x.<company>.<…>` prefix pattern.
 |-----------|------|-------------|
 | `event_type` | `str` | Custom event type string to validate. |
 
-**Raises:** `EventTypeError` — if `event_type` does not match the `x.*` pattern or is reserved by the first-party registry.
+**Raises:** `EventTypeError` — if `event_type` does not match the required pattern or claims a reserved `llm.*` namespace.
 
 ---
 
@@ -214,7 +208,7 @@ Returns `None` instead of raising if the value is not found.
 Regex pattern that all valid event type strings (registered and custom) must match:
 
 ```
-^(?:llm\.[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_.]*){1,2}|x\.[a-z][a-z0-9._]*)$
+^(?:llm\.[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*){1,3}|[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*){2,}\.[a-z][a-z0-9_]*)$
 ```
-- `validate_custom()` — validate a custom `x.<company>.<…>` event type string
+- `validate_custom()` — validate a custom reverse-domain event type string (e.g. `com.example.<…>`)
 - `namespace_of()` — return the namespace prefix of a given event type string

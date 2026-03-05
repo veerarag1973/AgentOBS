@@ -137,7 +137,7 @@ Settings.callback_manager.add_handler(handler)
 |--------------------------|-------------------|
 | LLM events (`LLM`, `llm`) | `llm.trace.span.started` / `llm.trace.span.completed` |
 | Function call events (`FUNCTION_CALL`) | `llm.trace.tool_call.started` / `llm.trace.tool_call.completed` |
-| Query events (`QUERY`) | `llm.trace.span.started` / `llm.trace.span.completed` with `query` source |
+| Query events (`QUERY`) | `llm.trace.query.started` / `llm.trace.query.completed` |
 
 ### Methods
 

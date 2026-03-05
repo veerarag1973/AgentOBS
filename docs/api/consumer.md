@@ -16,7 +16,7 @@ class ConsumerRecord:
     tool_name: str
     namespaces: Tuple[str, ...]
     schema_version: str
-    contact: str = ""
+    contact: str | None = None
     metadata: Dict[str, str] = field(default_factory=dict)
 ```
 
@@ -29,7 +29,7 @@ An immutable record representing one registered consumer of the schema.
 | `tool_name` | `str` | The name of the tool or service consuming events. |
 | `namespaces` | `Tuple[str, ...]` | Namespaces this consumer reads (e.g. `("llm.trace.*", "llm.cost.*")`). |
 | `schema_version` | `str` | The minimum schema version this consumer requires (e.g. `"1.0"`). |
-| `contact` | `str` | Optional owner / on-call info. |
+| `contact` | `str \| None` | `None` | Optional owner / on-call info. |
 | `metadata` | `Dict[str, str]` | Arbitrary extra metadata. |
 
 ---
@@ -58,15 +58,23 @@ registry.register(ConsumerRecord(
 
 ### Methods
 
-#### `register(record: ConsumerRecord) -> None`
+#### `register(tool_name: str, *, namespaces: Sequence[str], schema_version: str, contact: str | None = None, metadata: dict[str, str] | None = None) -> ConsumerRecord`
 
-Add a consumer record to the registry.
+Register a consumer's schema requirements.
 
 **Args:**
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `record` | `ConsumerRecord` | The consumer to register. |
+| `tool_name` | `str` | Name of the consuming tool or service. |
+| `namespaces` | `Sequence[str]` | Event namespaces required (e.g. `["trace", "eval"]`). |
+| `schema_version` | `str` | Minimum schema version required (`"MAJOR.MINOR"`). |
+| `contact` | `str \| None` | Optional contact info for compatibility escalations. |
+| `metadata` | `dict[str, str] \| None` | Optional freeform metadata dict. |
+
+**Returns:** `ConsumerRecord`
+
+**Raises:** `ValueError` — if `tool_name` is empty, `namespaces` is empty, or `schema_version` is not in `MAJOR.MINOR` format.
 
 ---
 
@@ -93,9 +101,9 @@ Supports exact matches and wildcard patterns (e.g. `"llm.trace.*"`).
 
 ---
 
-#### `by_tool(tool_name: str) -> List[ConsumerRecord]`
+#### `by_tool(tool_name: str) -> ConsumerRecord | None`
 
-Return all records registered under the given `tool_name`.
+Return the first record registered under the given `tool_name`, or `None` if not found.
 
 **Args:**
 
@@ -103,7 +111,7 @@ Return all records registered under the given `tool_name`.
 |-----------|------|-------------|
 | `tool_name` | `str` | Exact tool name string. |
 
-**Returns:** `List[ConsumerRecord]`
+**Returns:** `ConsumerRecord | None` — the first matching record, or `None` if not found.
 
 ---
 
@@ -148,7 +156,7 @@ Remove all registered consumers. Useful in tests.
 ## `IncompatibleSchemaError`
 
 ```python
-class IncompatibleSchemaError(LLMSchemaError):
+class IncompatibleSchemaError(Exception):
     incompatible: List[Tuple[str, str]]
 ```
 
@@ -174,7 +182,7 @@ Return the global `ConsumerRegistry` singleton.
 
 ---
 
-### `register_consumer(record: ConsumerRecord) -> None`
+### `register_consumer(tool_name: str, *, namespaces: Sequence[str], schema_version: str, contact: str | None = None, metadata: dict[str, str] | None = None) -> ConsumerRecord`
 
 Register a consumer in the global registry.
 
@@ -182,29 +190,35 @@ Register a consumer in the global registry.
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `record` | `ConsumerRecord` | Consumer to register. |
+| `tool_name` | `str` | Name of the consuming tool or service. |
+| `namespaces` | `Sequence[str]` | Event namespaces required. |
+| `schema_version` | `str` | Minimum schema version required (`"MAJOR.MINOR"`). |
+| `contact` | `str \| None` | Optional contact info. |
+| `metadata` | `dict[str, str] \| None` | Optional freeform metadata. |
+
+**Returns:** `ConsumerRecord`
 
 ---
 
-### `assert_compatible(installed_version: str = tracium.__version__) -> None`
+### `assert_compatible(installed_version: str = "2.0") -> None`
 
 Assert all globally registered consumers are compatible with `installed_version`.
 
-Defaults to the currently installed package version.
+Defaults to the current library schema version (`"2.0"`).
 
 **Raises:** `IncompatibleSchemaError` — if any registered consumer is incompatible.
 
 **Example:**
 
 ```python
-import tracium
-from tracium.consumer import register_consumer, assert_compatible, ConsumerRecord
+from tracium.consumer import register_consumer, assert_compatible
 
-register_consumer(ConsumerRecord(
-    tool_name="billing-agent",
+register_consumer(
+    "billing-agent",
     namespaces=("llm.cost.*",),
     schema_version="1.0",
-))
+    contact="billing-team@example.com",
+)
 
 # Call at startup — raises IncompatibleSchemaError if your tool requires
 # a higher schema version than installed.

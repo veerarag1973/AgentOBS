@@ -261,7 +261,7 @@ Requires the `[otel]` optional extra: `pip install "tracium[otel]"`.
 
 ```python
 class OTelBridgeExporter(
-    tracer_name: str = "Tracium",
+    tracer_name: str = "agentobs",
     tracer_version: str = "1.0",
 )
 ```
@@ -275,7 +275,7 @@ and all registered `SpanExporter` instances fire as normal.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `tracer_name` | `str` | `"Tracium"` | Instrumentation scope name. |
+| `tracer_name` | `str` | `"agentobs"` | Instrumentation scope name. |
 | `tracer_version` | `str` | `"1.0"` | Instrumentation scope version. |
 
 **Example:**
@@ -319,6 +319,7 @@ class WebhookExporter(
     headers: Optional[Dict[str, str]] = None,
     timeout: float = 10.0,
     max_retries: int = 3,
+    allow_private_addresses: bool = False,
 )
 ```
 
@@ -326,7 +327,7 @@ Async exporter that sends events to an HTTP webhook endpoint.
 
 - Single events are delivered as a JSON-encoded body.
 - Batch events are delivered as a JSON array.
-- Optional HMAC-SHA256 request signing via `X-Tracium-Signature` header.
+- Optional HMAC-SHA256 request signing via `X-AgentOBS-Signature` header.
 - Retry logic uses truncated exponential back-off (1s, 2s, 4s … capped at 30s).
 - The `secret` is **never** included in repr, logs, or exception messages.
 
@@ -339,6 +340,7 @@ Async exporter that sends events to an HTTP webhook endpoint.
 | `headers` | `Dict[str, str] \| None` | `None` | Optional extra HTTP request headers. |
 | `timeout` | `float` | `10.0` | Per-request timeout in seconds. |
 | `max_retries` | `int` | `3` | Maximum retry attempts on transient failures. |
+| `allow_private_addresses` | `bool` | `False` | When `True`, allows posting to private/loopback IP addresses. |
 
 **Example:**
 
@@ -383,7 +385,7 @@ Export multiple events as a JSON array in a single HTTP POST.
 class DatadogResourceAttributes:
     service: str
     env: str = "production"
-    version: str = "1.0.0"
+    version: str = "0.0.0"
     extra: Dict[str, str] = field(default_factory=dict)
 ```
 
@@ -395,7 +397,7 @@ Datadog resource attributes attached to every trace span and metric series.
 |-----------|------|---------|-------------|
 | `service` | `str` | — | Datadog service name. |
 | `env` | `str` | `"production"` | Deployment environment tag (e.g. `"staging"`, `"production"`). |
-| `version` | `str` | `"1.0.0"` | Service version tag. |
+| `version` | `str` | `"0.0.0"` | Service version tag. |
 | `extra` | `Dict[str, str]` | `{}` | Additional arbitrary Datadog tags. |
 
 #### Methods
@@ -417,11 +419,10 @@ class DatadogExporter(
     env: str = "production",
     *,
     agent_url: str = "http://localhost:8126",
-    api_key: str = "",
-    dd_site: str = "datadoghq.com",
-    resource_attrs: Optional[DatadogResourceAttributes] = None,
-    timeout: float = 5.0,
-    metric_fields: Optional[FrozenSet[str]] = None,
+    api_key: Optional[str] = None,
+    dd_site: Optional[str] = None,
+    timeout: float = 10.0,
+    allow_private_addresses: bool = False,
 )
 ```
 
@@ -429,7 +430,7 @@ Async exporter that sends events to the Datadog Agent (traces) and to the
 Datadog Metrics API.
 
 - **Traces** — serialised via `to_dd_span()` and sent to `POST {agent_url}/v0.3/traces` using the Datadog Agent wire format.
-- **Metrics** — extracted from trace payload numeric fields and sent to `POST https://api.{dd_site}/api/v1/series`.
+- **Metrics** — extracted from trace payload numeric fields and sent to `POST https://api.{dd_site}/api/v2/series`.
 - `api_key` is required for metric delivery; trace delivery goes to the local agent and does not need a key.
 - No `ddtrace` dependency — stdlib-only HTTP transport.
 
@@ -440,11 +441,10 @@ Datadog Metrics API.
 | `service` | `str` | — | Datadog service name. |
 | `env` | `str` | `"production"` | Deployment environment. |
 | `agent_url` | `str` | `"http://localhost:8126"` | Datadog Agent base URL. |
-| `api_key` | `str` | `""` | Datadog API key for metrics. Required when exporting metrics. |
-| `dd_site` | `str` | `"datadoghq.com"` | Datadog site for metrics API (e.g. `"datadoghq.eu"`). |
-| `resource_attrs` | `DatadogResourceAttributes \| None` | `None` | Resource attributes; constructed from `service` and `env` if not provided. |
-| `timeout` | `float` | `5.0` | HTTP request timeout in seconds. |
-| `metric_fields` | `FrozenSet[str] \| None` | `None` | Metric field names to extract. Defaults to the built-in `_METRIC_FIELDS` frozenset. |
+| `api_key` | `str \| None` | `None` | Datadog API key for metrics (optional). Required when exporting metrics. |
+| `dd_site` | `str \| None` | `None` | Datadog site for metrics API (e.g. `"datadoghq.com"`). Required when `api_key` is set. |
+| `timeout` | `float` | `10.0` | HTTP request timeout in seconds. |
+| `allow_private_addresses` | `bool` | `False` | When `True`, allows posting to private/loopback IP addresses. |
 
 **Default metric fields:** `cost_usd`, `token_count`, `input_tokens`,
 `output_tokens`, `total_tokens`, `duration_ms`, `score`.
@@ -517,9 +517,9 @@ class GrafanaLokiExporter(
     *,
     labels: Optional[Dict[str, str]] = None,
     include_envelope_labels: bool = True,
-    tenant_id: str = "",
-    extra_headers: Optional[Dict[str, str]] = None,
-    timeout: float = 5.0,
+    tenant_id: Optional[str] = None,
+    timeout: float = 10.0,
+    allow_private_addresses: bool = False,
 )
 ```
 
@@ -528,7 +528,7 @@ Async exporter that pushes events to a Grafana Loki instance via the
 
 - Each event becomes a single Loki log entry.
 - Stream labels default to `event_type` + any labels from `labels`; optionally
-  enriched with envelope fields (`org_id`, `team_id`, `source`) when
+  enriched with envelope fields (`event_type`, `org_id`) when
   `include_envelope_labels=True`.
 - Dots in `event_type` strings are sanitised to underscores for Loki label
   compatibility (e.g. `llm.trace.span.completed` → `llm_trace_span_completed`).
@@ -541,10 +541,10 @@ Async exporter that pushes events to a Grafana Loki instance via the
 |-----------|------|---------|-------------|
 | `url` | `str` | — | Loki push URL, e.g. `"http://loki:3100"`. |
 | `labels` | `Dict[str, str] \| None` | `None` | Static labels added to every stream. |
-| `include_envelope_labels` | `bool` | `True` | When `True`, adds `source`, `org_id`, `team_id` from the event envelope as stream labels. |
-| `tenant_id` | `str` | `""` | Value of the `X-Scope-OrgID` header for multi-tenant Loki. |
-| `extra_headers` | `Dict[str, str] \| None` | `None` | Additional HTTP headers (e.g. authentication). |
-| `timeout` | `float` | `5.0` | HTTP request timeout in seconds. |
+| `include_envelope_labels` | `bool` | `True` | When `True`, adds `event_type` and `org_id` from the event envelope as stream labels. |
+| `tenant_id` | `str \| None` | `None` | Value of the `X-Scope-OrgID` header for multi-tenant Loki. |
+| `timeout` | `float` | `10.0` | HTTP request timeout in seconds. |
+| `allow_private_addresses` | `bool` | `False` | When `True`, allows posting to private/loopback IP addresses. |
 
 **Example:**
 

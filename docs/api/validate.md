@@ -69,7 +69,7 @@ The schema is loaded once and cached in memory for subsequent calls.
 |-------|------|
 | `schema_version` | Required. Must match SemVer pattern (e.g. `"1.0"`). |
 | `event_id` | Required. Must be a valid 26-character ULID. |
-| `event_type` | Required. Must match `^[a-z][a-z0-9]*(?:\.[a-z][a-z0-9_]*)+$`. |
+| `event_type` | Required. Must match `^(?:llm\.[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*){1,3}|[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*){2,}\.[a-z][a-z0-9_]*)$`. |
 | `timestamp` | Required. Must be UTC ISO-8601 ending in `Z`. |
 | `source` | Required. Must match `tool-name@semver` pattern. |
 | `payload` | Required. Must be a non-empty object. |
@@ -77,6 +77,7 @@ The schema is loaded once and cached in memory for subsequent calls.
 | `span_id` | Optional. Must be exactly 16 lowercase hex characters. |
 | `parent_span_id` | Optional. Must be exactly 16 lowercase hex characters. |
 | `org_id`, `team_id`, `actor_id`, `session_id` | Optional. Must be non-empty strings. |
-| `checksum`, `signature` | Optional. Must be 64-char hex SHA-256 values. |
+| `checksum` | Optional. Must match `sha256:<64-char lowercase hex>` format. |
+| `signature` | Optional. Must match `hmac-sha256:<64-char lowercase hex>` format. |
 | `prev_id` | Optional. Must be a valid 26-character ULID. |
 | `tags` | Optional. Must be an object with non-empty string keys and values. |

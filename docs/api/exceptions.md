@@ -207,3 +207,98 @@ try:
 except ExportError as exc:
     logger.error("backend=%s reason=%s", exc.backend, exc.reason)
 ```
+
+---
+
+## `SchemaVersionError`
+
+```python
+class SchemaVersionError(LLMSchemaError)
+SchemaVersionError(version: str)
+```
+
+Raised when an event carries an unsupported `schema_version` value.
+
+v2.0 consumers MUST accept `"1.0"` and `"2.0"` and MUST raise this error for
+any other value (RFC-0001 §15.5).
+
+**Attributes:**
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `version` | `str` | The unsupported schema version string that was encountered. |
+
+**Example:**
+
+```python
+try:
+    consumer.ingest(event)
+except SchemaVersionError as exc:
+    logger.warning("Skipping event with unknown version %s", exc.version)
+```
+
+---
+
+## `SigningError`
+
+```python
+class SigningError(LLMSchemaError)
+SigningError(reason: str)
+```
+
+Raised when HMAC event signing fails.
+
+The `org_secret` value is **never** included in the message.
+
+**Attributes:**
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `reason` | `str` | Human-readable description of why signing failed. |
+
+---
+
+## `VerificationError`
+
+```python
+class VerificationError(LLMSchemaError)
+VerificationError(event_id: str)
+```
+
+Raised by `assert_verified()` when an event fails cryptographic verification.
+
+**Attributes:**
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `event_id` | `str` | The ULID of the event that failed (safe to log). |
+
+---
+
+## `ExportError`
+
+```python
+class ExportError(LLMSchemaError)
+ExportError(backend: str, reason: str, event_id: str = "")
+```
+
+Raised when exporting events to an external backend fails.
+
+HMAC secrets and PII-tagged payloads are **never** embedded in the message.
+
+**Attributes:**
+
+| Attribute | Type | Description |
+|-----------|------|-------------|
+| `backend` | `str` | Short identifier for the backend (e.g. `"otlp"`, `"webhook"`, `"jsonl"`). |
+| `reason` | `str` | Human-readable description of the failure. |
+| `event_id` | `str` | The ULID of the failed event, or `""` for batch failures. |
+
+**Example:**
+
+```python
+try:
+    await exporter.export(event)
+except ExportError as exc:
+    logger.error("backend=%s reason=%s", exc.backend, exc.reason)
+```

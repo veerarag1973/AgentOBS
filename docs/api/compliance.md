@@ -31,7 +31,7 @@ A single compliance non-conformance found during a check.
 | `check_id` | `str` | Numeric code, e.g. `"CHK-1"`. |
 | `rule` | `str` | Short description of the rule violated. |
 | `detail` | `str` | Human-readable description of the specific problem. |
-| `event_id` | `str` | The `event_id` of the offending event. |
+| `event_id` | `str | None` | The `event_id` of the offending event, or `None`. |
 
 ---
 
@@ -105,11 +105,11 @@ or non-monotonic timestamp).
 Result of `verify_chain_integrity()`. Evaluates as `True` only when no
 violations were found.
 
-**Attributes:** `valid`, `events_checked`, `violations`.
+**Attributes:** `passed`, `chain_result`, `violations`, `events_verified`, `gaps_detected`.
 
 ---
 
-### `verify_chain_integrity(events: Sequence[Event]) -> ChainIntegrityResult`
+### `verify_chain_integrity(events: Sequence[Event], org_secret: str, *, check_monotonic_timestamps: bool = True) -> ChainIntegrityResult`
 
 Verify the structural integrity of an ordered event chain.
 
@@ -123,6 +123,8 @@ Checks:
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `events` | `Sequence[Event]` | Ordered list of events (oldest first). |
+| `org_secret` | `str` | HMAC key used when the chain was signed. |
+| `check_monotonic_timestamps` | `bool` | When `True` (default), also check that timestamps are non-decreasing. |
 
 **Returns:** `ChainIntegrityResult`
 
@@ -139,35 +141,38 @@ A single isolation violation found during tenant boundary checking.
 Result of `verify_tenant_isolation()` or `verify_events_scoped()`. Evaluates
 as `True` only when no violations were found.
 
-**Attributes:** `valid`, `events_checked`, `violations`.
+**Attributes:** `passed`, `violations`.
 
 ---
 
-### `verify_tenant_isolation(tenant_events: Dict[str, Sequence[Event]]) -> IsolationResult`
+### `verify_tenant_isolation(group_a: Sequence[Event], group_b: Sequence[Event], *, strict: bool = False) -> IsolationResult`
 
-Verify that events from different tenants do not share `org_id` values.
+Verify that events from two tenant groups do not share `org_id` values.
 
 **Args:**
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `tenant_events` | `Dict[str, Sequence[Event]]` | Mapping of tenant name → events for that tenant. |
+| `group_a` | `Sequence[Event]` | First tenant's events. |
+| `group_b` | `Sequence[Event]` | Second tenant's events. |
+| `strict` | `bool` | When `True`, events with `org_id=None` are also flagged as violations. |
 
 **Returns:** `IsolationResult`
 
 ---
 
-### `verify_events_scoped(events: Sequence[Event], *, org_id: str) -> IsolationResult`
+### `verify_events_scoped(events: Sequence[Event], *, expected_org_id: str | None = None, expected_team_id: str | None = None) -> IsolationResult`
 
-Verify that all events in `events` have the expected `org_id`.
+Verify that all events in `events` carry the expected scope values.
 
-Useful for asserting that a batch of events belongs to a single organisation.
+Useful for asserting that a batch of events belongs to a single organisation or team.
 
 **Args:**
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `events` | `Sequence[Event]` | Events to check. |
-| `org_id` | `str` | Expected organisation ID. |
+| `expected_org_id` | `str \| None` | Expected organisation ID, or `None` to skip the org check. |
+| `expected_team_id` | `str \| None` | Expected team ID, or `None` to skip the team check. |
 
 **Returns:** `IsolationResult`

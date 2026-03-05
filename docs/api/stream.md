@@ -67,13 +67,13 @@ Each non-empty line is deserialized with `Event.from_json()`.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `path` | `str \| Path` | — | Path to a `.jsonl` file. |
+| `path` | `str \| Path` | - | Path to a `.jsonl` file. |
 | `encoding` | `str` | `"utf-8"` | File encoding. |
 | `skip_errors` | `bool` | `False` | When `True`, silently skip malformed lines instead of raising. |
 
 **Returns:** `EventStream`
 
-**Raises:** `DeserializationError` — on the first malformed line when `skip_errors=False`. `OSError` — if the file cannot be opened.
+**Raises:** `DeserializationError` - on the first malformed line when `skip_errors=False`. `OSError` - if the file cannot be opened.
 
 ---
 
@@ -87,7 +87,7 @@ Non-blocking: uses `get_nowait()` so this returns immediately once the queue is 
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `q` | `queue.Queue[Event]` | — | Queue of `Event` objects. |
+| `q` | `queue.Queue[Event]` | - | Queue of `Event` objects. |
 | `sentinel` | `object` | `None` | Stop-value that signals end-of-stream. Not added to the stream. |
 
 **Returns:** `EventStream`
@@ -102,7 +102,7 @@ Drain an `asyncio.Queue` into an `EventStream`.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `q` | `asyncio.Queue[Event]` | — | Async queue of `Event` objects. |
+| `q` | `asyncio.Queue[Event]` | - | Async queue of `Event` objects. |
 | `sentinel` | `object` | `None` | Stop-value. Not added to the stream. |
 
 **Returns:** `EventStream`
@@ -134,8 +134,8 @@ if `kafka-python` is not installed.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `topic` | `str` | — | Kafka topic name to consume. |
-| `bootstrap_servers` | `str \| List[str]` | — | Kafka broker address(es), e.g. `"localhost:9092"`. |
+| `topic` | `str` | - | Kafka topic name to consume. |
+| `bootstrap_servers` | `str \| List[str]` | - | Kafka broker address(es), e.g. `"localhost:9092"`. |
 | `group_id` | `str \| None` | `None` | Consumer group ID. `None` = no group (earliest offset). |
 | `sentinel` | `object` | `None` | Stop-value that signals end-of-stream. Not added to the stream. |
 | `max_messages` | `int \| None` | `None` | Maximum number of messages to consume before stopping. `None` = drain until sentinel or topic exhaustion. |
@@ -145,8 +145,8 @@ if `kafka-python` is not installed.
 **Returns:** `EventStream`
 
 **Raises:**
-- `ImportError` — if `kafka-python` is not installed.
-- `DeserializationError` — on a malformed message when `skip_errors=False`.
+- `ImportError` - if `kafka-python` is not installed.
+- `DeserializationError` - on a malformed message when `skip_errors=False`.
 
 **Example:**
 
@@ -220,10 +220,10 @@ Dispatch matching events to `exporter` as a single batch.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `exporter` | `Exporter` | — | Any object with an async `export_batch` method. |
+| `exporter` | `Exporter` | - | Any object with an async `export_batch` method. |
 | `predicate` | `Callable[[Event], bool] \| None` | `None` | Optional filter. When `None`, all events are sent. |
 
-**Returns:** `int` — number of events dispatched.
+**Returns:** `int` - number of events dispatched.
 
 ---
 
@@ -239,7 +239,7 @@ Equivalent to `await stream.route(exporter)`.
 |-----------|------|-------------|
 | `exporter` | `Exporter` | Target exporter. |
 
-**Returns:** `int` — number of events exported.
+**Returns:** `int` - number of events exported.
 
 ---
 
@@ -254,3 +254,64 @@ Equivalent to `await stream.route(exporter)`.
 | `stream[i:j]` | Get a slice. Returns a new `EventStream`. |
 | `for event in stream` | Iterate over events. |
 | `stream == other` | Equality comparison with another `EventStream`. |
+
+---
+
+## Module-level helpers
+
+### `iter_file(path, *, encoding="utf-8", skip_errors=False) -> Iterator[Event]`
+
+Yield `Event` objects from a NDJSON file one at a time (constant memory overhead).
+
+Unlike `EventStream.from_file()`, this is a **generator** - events are parsed
+and yielded individually without loading the entire file into memory.
+
+**Args:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `path` | `str \| Path` | - | Path to the NDJSON file. |
+| `encoding` | `str` | `"utf-8"` | File encoding. |
+| `skip_errors` | `bool` | `False` | When `True`, silently skip malformed lines. |
+
+**Yields:** `Event`
+
+**Raises:** `DeserializationError` - on the first malformed line when `skip_errors=False`.
+
+**Example:**
+
+```python
+from tracium.stream import iter_file
+
+for event in iter_file("events.ndjson"):
+    process(event)
+```
+
+---
+
+### `async aiter_file(path, *, encoding="utf-8", skip_errors=False) -> AsyncIterator[Event]`
+
+Async generator equivalent of `iter_file`.
+
+Reads the file via `asyncio.to_thread` to avoid blocking the event loop on I/O.
+
+**Args:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `path` | `str \| Path` | - | Path to the NDJSON file. |
+| `encoding` | `str` | `"utf-8"` | File encoding. |
+| `skip_errors` | `bool` | `False` | When `True`, silently skip malformed lines. |
+
+**Yields:** `Event`
+
+**Raises:** `DeserializationError` - on the first malformed line when `skip_errors=False`.
+
+**Example:**
+
+```python
+from tracium.stream import aiter_file
+
+async for event in aiter_file("events.ndjson"):
+    await process(event)
+```

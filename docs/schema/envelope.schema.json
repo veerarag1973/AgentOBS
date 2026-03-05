@@ -31,7 +31,7 @@
     "event_type": {
       "type": "string",
       "description": "RFC-0001 §7 — Namespaced event type. Standard types follow the BNF: 'llm.<namespace>.<entity>.<action>' where namespace is one of the registered built-in namespaces (§7.2). Extension types MUST use reverse-domain prefix outside the llm.* tree (e.g. com.example.entity.action).",
-      "pattern": "^(llm\\.[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*|[a-z][a-z0-9-]*(?:\\.[a-z][a-z0-9-]*)*\\.[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*)$",
+      "pattern": "^(?:llm\\.[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*){1,3}|[a-z][a-z0-9-]*(?:\\.[a-z][a-z0-9-]*){2,}\\.[a-z][a-z0-9_]*)$",
       "examples": [
         "llm.trace.span.completed",
         "llm.trace.agent.completed",

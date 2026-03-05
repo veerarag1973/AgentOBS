@@ -64,7 +64,7 @@ preventing accidental logging of sensitive data.
 from tracium.redact import Redactable, Sensitivity
 
 field = Redactable("alice@example.com", Sensitivity.PII, frozenset({"email"}))
-print(field)         # [REDACTED:PII]
+str(field)           # '<Redactable:pii>'
 print(field.reveal()) # alice@example.com
 ```
 

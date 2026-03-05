@@ -24,7 +24,7 @@ allowing regression detection and prompt-drift analysis (RFC-0001 §6).
 | `similarity_score` | `float` | ✓ | Semantic similarity in `[0.0, 1.0]` |
 | `added_tokens` | `int \| None` | — | Tokens added relative to the reference |
 | `removed_tokens` | `int \| None` | — | Tokens removed relative to the reference |
-| `diff_algorithm` | `str \| None` | — | Algorithm used (e.g. `"cosine"`, `"levenshtein"`) |
+| `diff_algorithm` | `str \| None` | — | Algorithm used. One of `"embedding_cosine"`, `"levenshtein"`, `"token_edit"`, `"lcs"`, `"semantic_embedding"` |
 | `ref_content_hash` | `str \| None` | — | SHA-256 of the reference content |
 | `target_content_hash` | `str \| None` | — | SHA-256 of the target content |
 | `computation_duration_ms` | `float \| None` | — | Diff computation latency |
@@ -44,7 +44,7 @@ payload = DiffComputedPayload(
     similarity_score=0.92,
     added_tokens=15,
     removed_tokens=8,
-    diff_algorithm="cosine",
+    diff_algorithm="embedding_cosine",
 )
 
 event = Event(

@@ -104,7 +104,7 @@ dt = datetime.fromtimestamp(ms / 1000, tz=timezone.utc)
 Regex pattern for strict canonical-form ULID validation:
 
 ```
-^[0-9A-HJKMNP-TV-Z]{26}$
+^[0-7][0-9A-HJKMNP-TV-Z]{25}$
 ```
 
 This pattern is stricter than `validate()` — it does not accept lowercase or

@@ -15,7 +15,7 @@ for usage patterns.
 class EventGovernancePolicy:
     blocked_types: Set[str] = field(default_factory=set)
     warn_deprecated: Set[str] = field(default_factory=set)
-    custom_rules: List[Callable[[Event], str]] = field(default_factory=list)
+    custom_rules: List[Callable[[Event], str | None]] = field(default_factory=list)
     strict_unknown: bool = False
 ```
 
@@ -28,7 +28,7 @@ trigger deprecation warnings, and any custom rule callbacks.
 |-----------|------|---------|-------------|
 | `blocked_types` | `Set[str]` | `set()` | Event type strings that are unconditionally rejected. |
 | `warn_deprecated` | `Set[str]` | `set()` | Event type strings that emit a `GovernanceWarning` when seen. |
-| `custom_rules` | `List[Callable[[Event], str]]` | `[]` | Callables `rule(event) -> str` — return a non-empty string to block the event with that reason. |
+| `custom_rules` | `List[Callable[[Event], str \| None]]` | `[]` | Callables `rule(event) -> str | None` — return a non-empty string to block the event with that reason, or `None` to allow. |
 | `strict_unknown` | `bool` | `False` | When `True`, any event whose type is not registered with `EventType` is blocked. |
 
 **Example:**
@@ -70,7 +70,7 @@ The evaluation order is:
 ## `GovernanceViolationError`
 
 ```python
-class GovernanceViolationError(LLMSchemaError):
+class GovernanceViolationError(Exception):
     event_type: str
     reason: str
 ```

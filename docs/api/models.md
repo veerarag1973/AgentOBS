@@ -76,7 +76,7 @@ equivalent to `Event.validate()`.
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `schema_version` | `str` | `"1.0"` | Schema version string. |
+| `schema_version` | `str` | `"2.0"` | Schema version string. |
 | `event_id` | `str` | — | 26-character ULID. |
 | `event_type` | `str` | — | Namespaced event type. |
 | `timestamp` | `str` | — | UTC ISO-8601 timestamp. |

@@ -22,14 +22,14 @@ before any events are processed.
 ### Register your tool
 
 ```python
-from tracium.consumer import register_consumer, assert_compatible, ConsumerRecord
+from tracium.consumer import register_consumer, assert_compatible
 
-register_consumer(ConsumerRecord(
-    tool_name="billing-agent",
+register_consumer(
+    "billing-agent",
     namespaces=("llm.cost.*",),
     schema_version="1.0",
     contact="platform-team@example.com",
-))
+)
 
 # Typically called once at application start
 assert_compatible()
@@ -149,15 +149,15 @@ types and warn callers when they are used.
 ### Register a deprecation notice
 
 ```python
-from tracium.deprecations import mark_deprecated, DeprecationNotice
+from tracium.deprecations import mark_deprecated
 
-mark_deprecated(DeprecationNotice(
-    event_type="llm.legacy.trace",
+mark_deprecated(
+    "llm.legacy.trace",
     since="1.1.0",
     sunset="2.0.0",
     replacement="llm.trace.span.completed",
-    notes="Use llm.trace.* namespace — payload is identical.",
-))
+    notes="Use llm.trace.* namespace - payload is identical.",
+)
 ```
 
 ### Check and warn
@@ -199,15 +199,15 @@ A typical application startup sequence:
 
 ```python
 import tracium
-from tracium.consumer import register_consumer, assert_compatible, ConsumerRecord
+from tracium.consumer import register_consumer, assert_compatible
 from tracium.governance import EventGovernancePolicy, set_global_policy
 
 # 1. Declare dependencies
-register_consumer(ConsumerRecord(
-    tool_name="my-service",
+register_consumer(
+    "my-service",
     namespaces=("llm.trace.*", "llm.cost.*"),
     schema_version="1.1",
-))
+)
 
 # 2. Assert compatibility
 assert_compatible()

@@ -68,9 +68,9 @@ class DeprecationRecord:
     event_type: str
     since: str
     sunset: str
-    sunset_policy: SunsetPolicy
-    replacement: str = ""
-    migration_notes: str = ""
+    sunset_policy: SunsetPolicy = SunsetPolicy.NEXT_MAJOR
+    replacement: str | None = None
+    migration_notes: str | None = None
     field_renames: Dict[str, str] = field(default_factory=dict)
 ```
 
@@ -84,10 +84,10 @@ roadmap.
 | `event_type` | `str` | The deprecated event type. |
 | `since` | `str` | Version in which the type was marked deprecated. |
 | `sunset` | `str` | Target version for removal. |
-| `sunset_policy` | `SunsetPolicy` | Removal urgency. |
-| `replacement` | `str` | Recommended replacement event type. |
-| `migration_notes` | `str` | Free-form migration guidance. |
-| `field_renames` | `Dict[str, str]` | Payload field renames: `{old_name: new_name}`. |
+| `sunset_policy` | `SunsetPolicy` | `SunsetPolicy.NEXT_MAJOR` | Removal urgency. |
+| `replacement` | `str \| None` | `None` | Recommended replacement event type. |
+| `migration_notes` | `str \| None` | `None` | Free-form migration guidance. |
+| `field_renames` | `Dict[str, str]` | `{}` | Payload field renames: `{old_name: new_name}`. |
 
 ### Methods
 
@@ -154,63 +154,4 @@ try:
     new_event, result = v1_to_v2(event)
 except NotImplementedError:
     pass  # expected until v2.0 ships
-```
-
-
----
-
-## `MigrationResult`
-
-```python
-@dataclass(frozen=True)
-class MigrationResult:
-    source_version: str
-    target_version: str
-    event_id: str
-    success: bool
-    transformed_fields: Tuple[str, ...] = ()
-    warnings: Tuple[str, ...] = ()
-```
-
-Metadata about a completed migration operation.
-
-**Attributes:**
-
-| Attribute | Type | Description |
-|-----------|------|-------------|
-| `source_version` | `str` | The schema version the event was migrated *from*. |
-| `target_version` | `str` | The schema version the event was migrated *to*. |
-| `event_id` | `str` | The `event_id` of the event that was transformed. |
-| `success` | `bool` | `True` when migration completed without errors. |
-| `transformed_fields` | `Tuple[str, ...]` | Names of event fields that were modified. |
-| `warnings` | `Tuple[str, ...]` | Any non-fatal issues encountered during migration. |
-
----
-
-## Module-level functions
-
-### `v1_to_v2(event: Event) -> Tuple[Event, MigrationResult]`
-
-Migrate a v1.0 event to the v2.0 schema.
-
-> **Scaffold only** — raises `NotImplementedError` in v1.0. Write the call-site
-> now and upgrade to the full implementation when v2.0 is released.
-
-**Args:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `event` | `Event` | A v1.0 `Event` to migrate. |
-
-**Returns:** `Tuple[Event, MigrationResult]` — `(migrated_event, result)` tuple.
-
-**Raises:** `NotImplementedError` — always in v1.0 (v2 schema not yet defined).
-
-**Example:**
-
-```python
-from tracium.migrate import v1_to_v2
-
-# Write the call-site now; will work when v2.0 ships.
-event_v2, result = v1_to_v2(event_v1)  # raises NotImplementedError in v1.0
 ```

@@ -98,7 +98,7 @@ provided.
 | `event_type` | `str` | — | Namespaced event type, e.g. `"llm.trace.span.completed"`. Must match `llm.<ns>.<entity>.<action>` or `x.<company>.<…>`. |
 | `source` | `str` | — | Tool name + full semver, e.g. `"llm-trace@0.3.1"`. |
 | `payload` | `Dict[str, Any]` | — | Non-empty dict of event-type-specific data. |
-| `schema_version` | `str` | `"1.0"` | Schema version string matching SemVer pattern. |
+| `schema_version` | `str` | `"2.0"` | Schema version string matching SemVer pattern. |
 | `event_id` | `str \| None` | `None` | 26-character ULID. Auto-generated if `None`. |
 | `timestamp` | `str \| None` | `None` | UTC ISO-8601 timestamp. Auto-generated if `None`. |
 | `trace_id` | `str \| None` | `None` | OpenTelemetry trace ID — 32 lowercase hex chars. |
@@ -140,7 +140,7 @@ All properties are read-only.
 | `event_type` | `str` | Namespaced event type string. |
 | `timestamp` | `str` | UTC ISO-8601 timestamp string. |
 | `source` | `str` | Source tool and version string. |
-| `payload` | `Dict[str, Any]` | Deep-copied payload dict. |
+| `payload` | `Dict[str, Any]` | Read-only mapping view (`MappingProxyType`) of the payload. |
 | `trace_id` | `str \| None` | 32-char hex OpenTelemetry trace ID. |
 | `span_id` | `str \| None` | 16-char hex OpenTelemetry span ID. |
 | `parent_span_id` | `str \| None` | 16-char hex parent span ID. |

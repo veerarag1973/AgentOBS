@@ -10,7 +10,7 @@ Every event carries a common **envelope** regardless of the event type:
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `schema_version` | Auto | Always `"1.0"`. Set automatically; do not override unless migrating. |
+| `schema_version` | Auto | Defaults to `"2.0"` (consumers also accept `"1.0"` for backward compatibility). |
 | `event_id` | Auto | ULID (26-character, time-ordered, URL-safe). Auto-generated if omitted. |
 | `event_type` | **Yes** | Namespaced event type string (`llm.<ns>.<entity>.<action>`). Use an `EventType` member or a valid custom `x.*` type. |
 | `timestamp` | Auto | UTC ISO-8601 (`YYYY-MM-DDTHH:MM:SS.ffffffZ`). Auto-generated. |
@@ -28,7 +28,7 @@ Every event carries a common **envelope** regardless of the event type:
 | `signature` | Signing | HMAC-SHA256 chain signature. Set by `sign`. |
 | `prev_id` | Signing | `event_id` of the preceding event in the audit chain. |
 
-The `Event` is a **frozen dataclass** — all fields are read-only after construction.
+`Event` is an immutable envelope class with read-only properties after construction.
 
 ## Event types
 
@@ -39,15 +39,15 @@ from tracium import EventType
 
 # Trace namespace
 EventType.TRACE_SPAN_COMPLETED       # "llm.trace.span.completed"
-EventType.TRACE_SPAN_ERRORED         # "llm.trace.span.errored"
+EventType.TRACE_SPAN_FAILED          # "llm.trace.span.failed"
 
 # Cost namespace
-EventType.COST_RECORDED              # "llm.cost.recorded"
-EventType.COST_BUDGET_THRESHOLD      # "llm.cost.budget.threshold"
+EventType.COST_TOKEN_RECORDED        # "llm.cost.token.recorded"
+EventType.COST_SESSION_RECORDED      # "llm.cost.session.recorded"
 
 # Guard namespace
-EventType.GUARD_BLOCKED              # "llm.guard.blocked"
-EventType.GUARD_FLAGGED              # "llm.guard.flagged"
+EventType.GUARD_INPUT_BLOCKED        # "llm.guard.input.blocked"
+EventType.GUARD_OUTPUT_FLAGGED       # "llm.guard.output.flagged"
 
 # ... and 40+ more
 ```
