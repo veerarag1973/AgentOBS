@@ -1,7 +1,7 @@
 # Documentation Index
 
 > **AgentOBS** (`agentobs`) — The reference implementation of the [AGENTOBS Standard](https://www.getspanforge.com/standard) (RFC-0001), the open event-schema standard for observability of agentic AI systems.  
-> Current release: **1.0.5** — [Changelog](changelog.md) · [![PyPI](https://img.shields.io/pypi/v/agentobs?color=4c8cbf&logo=pypi&logoColor=white)](https://pypi.org/project/agentobs/)
+> Current release: **1.0.6** — [Changelog](changelog.md) · [![PyPI](https://img.shields.io/pypi/v/agentobs?color=4c8cbf&logo=pypi&logoColor=white)](https://pypi.org/project/agentobs/)
 
 This index links to every documentation page in this folder.
 

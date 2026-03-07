@@ -13,8 +13,8 @@
   <img src="https://img.shields.io/badge/python-3.9%2B-4c8cbf?logo=python&logoColor=white" alt="Python 3.9+"/>
   <a href="https://pypi.org/project/agentobs/"><img src="https://img.shields.io/pypi/v/agentobs?color=4c8cbf&logo=pypi&logoColor=white" alt="PyPI"/></a>
   <a href="https://www.getspanforge.com/standard"><img src="https://img.shields.io/badge/standard-AGENTOBS_RFC--0001-4c8cbf" alt="AGENTOBS RFC-0001"/></a>
-  <img src="https://img.shields.io/badge/coverage-96%25-brightgreen" alt="96% test coverage"/>
-  <img src="https://img.shields.io/badge/tests-1837%20passing-brightgreen" alt="1837 tests"/>
+  <img src="https://img.shields.io/badge/coverage-97%25-brightgreen" alt="97% test coverage"/>
+  <img src="https://img.shields.io/badge/tests-2407%20passing-brightgreen" alt="2407 tests"/>
   <img src="https://img.shields.io/badge/dependencies-zero-brightgreen" alt="Zero dependencies"/>
   <a href="docs/index.md"><img src="https://img.shields.io/badge/docs-local-4c8cbf" alt="Documentation"/></a>
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"/>
@@ -66,6 +66,7 @@ import agentobs  # distribution name is agentobs, import name is agentobs
 
 ```bash
 pip install "agentobs[jsonschema]"   # strict JSON Schema validation
+pip install "agentobs[openai]"       # OpenAI auto-instrumentation (patch/unpatch)
 pip install "agentobs[http]"         # Webhook + OTLP export
 pip install "agentobs[pydantic]"     # Pydantic v2 model layer
 pip install "agentobs[otel]"         # OpenTelemetry SDK integration
@@ -95,6 +96,38 @@ with agentobs.span("call-llm") as span:
 ```
 
 The context manager automatically records start/end times, parent-child span relationships, and emits a structured event when it exits.
+
+---
+
+### 1b — Auto-instrument the OpenAI client (zero boilerplate)
+
+```python
+from agentobs.integrations import openai as openai_integration
+import openai, agentobs
+
+# One-time setup: patch the OpenAI SDK
+openai_integration.patch()
+
+agentobs.configure(exporter="console", service_name="my-agent")
+
+client = openai.OpenAI()
+
+with agentobs.tracer.span("chat-gpt4o") as span:
+    resp = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": "Hello"}],
+    )
+    # span.token_usage, span.cost, and span.model are now populated automatically
+```
+
+`patch()` wraps every `client.chat.completions.create()` call (sync and async)
+so that `token_usage`, `cost`, and `model` are auto-populated on the active span
+from the API response — no per-call boilerplate required.
+
+```python
+# Restore original behaviour when you're done
+openai_integration.unpatch()
+```
 
 ---
 
@@ -356,7 +389,7 @@ Drop any of these into your CI pipeline to catch schema drift, signing failures,
 </tr>
 <tr>
   <td><code>agentobs.integrations</code></td>
-  <td>Plug-in adapters for OpenAI, LangChain, LlamaIndex, Anthropic, Groq, Ollama, and Together</td>
+  <td>Plug-in adapters for OpenAI (auto-instrumentation via <code>patch()</code>), LangChain, LlamaIndex, Anthropic, Groq, Ollama, and Together. <code>agentobs.integrations._pricing</code> ships a static USD/1M-token pricing table for all current OpenAI models.</td>
   <td>App developers</td>
 </tr>
 <tr>
@@ -415,8 +448,8 @@ event = Event(
 
 ## Quality standards
 
-- **1 837 tests** — unit, integration, property-based (Hypothesis), and performance benchmarks
-- **96 % line and branch coverage** — measured with ``pytest-cov``
+- **2 407 tests** — unit, integration, property-based (Hypothesis), and performance benchmarks
+- **97 % line and branch coverage** — measured with ``pytest-cov``
 - **Zero required dependencies** — the entire core runs on Python's standard library alone
 - **Typed** — full ``py.typed`` marker; works with mypy and pyright out of the box
 - **Frozen v2 trace schema** — ``llm.trace.*`` payload fields will never break between minor releases
@@ -484,7 +517,7 @@ python -m venv .venv
 # source .venv/bin/activate     # macOS / Linux
 
 pip install -e ".[dev]"
-pytest                          # run all 1 837 tests
+pytest                          # run all 2 407 tests
 ```
 
 <details>

@@ -19,7 +19,9 @@ from agentobs._span import (
     Span,
     SpanContextManager,
     _run_stack,
+    _run_stack_var,
     _span_stack,
+    _span_stack_var,
 )
 from agentobs._stream import (
     _build_source,
@@ -59,8 +61,8 @@ def _install_exporter() -> _CapturingExporter:
 
 
 def _clean_stacks() -> None:
-    _span_stack().clear()
-    _run_stack().clear()
+    _span_stack_var.set(())
+    _run_stack_var.set(())
 
 
 # ===========================================================================

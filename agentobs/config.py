@@ -7,9 +7,9 @@ Environment variables are read once at import time; subsequent calls to
 
 Environment variable mapping
 -----------------------------
-+----------------------------+-----------------------+
-| Env var                    | Config field          |
-+============================+=======================+
++-----------------------------+-----------------------+
+| Env var                     | Config field          |
++=============================+=======================+
 | ``AGENTOBS_EXPORTER``       | ``exporter``          |
 | ``AGENTOBS_ENDPOINT``       | ``endpoint``          |
 | ``AGENTOBS_ORG_ID``         | ``org_id``            |
@@ -17,7 +17,8 @@ Environment variable mapping
 | ``AGENTOBS_ENV``            | ``env``               |
 | ``AGENTOBS_SERVICE_VERSION``| ``service_version``   |
 | ``AGENTOBS_SIGNING_KEY``    | ``signing_key``       |
-+----------------------------+-----------------------+
+| ``AGENTOBS_SAMPLE_RATE``    | ``sample_rate``       |
++-----------------------------+-----------------------+
 
 Usage::
 
@@ -33,8 +34,11 @@ from __future__ import annotations
 
 import os
 import threading
-from dataclasses import dataclass
-from typing import Any
+from dataclasses import dataclass, field
+from typing import Any, Callable, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from agentobs.event import Event
 
 __all__ = ["AgentOBSConfig", "configure", "get_config"]
 
@@ -72,6 +76,33 @@ class AgentOBSConfig:
                          One of ``"warn"`` (emit to ``stderr``, default),
                          ``"raise"`` (re-raise the exception into caller code),
                          or ``"drop"`` (silently discard).
+        include_raw_tool_io: Opt-in flag to include raw tool arguments
+                             (``arguments_raw``) and results (``result_raw``)
+                             in serialised :class:`~agentobs.namespaces.trace.ToolCall`
+                             payloads.  Defaults to ``False`` to prevent
+                             accidental PII leakage.  Set programmatically;
+                             no corresponding environment variable is provided.
+        sample_rate:         Fraction of traces to emit (0.0–1.0 inclusive).
+                             Sampling is deterministic per ``trace_id`` so
+                             all spans of a trace are sampled together.
+                             Defaults to ``1.0`` (emit everything).  Set via
+                             ``AGENTOBS_SAMPLE_RATE`` env var.
+        always_sample_errors: When ``True`` (the default), spans/traces with
+                             ``status="error"`` or ``status="timeout"`` are
+                             always emitted regardless of *sample_rate*.
+        trace_filters:       List of callables ``(Event) -> bool``.  An event
+                             is emitted only when **all** filters return
+                             ``True``.  Applied after probabilistic sampling.
+                             Not configurable via environment variable.
+        enable_trace_store:  When ``True``, every dispatched event is also
+                             written to the in-process
+                             :class:`~agentobs._store.TraceStore` ring buffer so
+                             it can be queried via :func:`~agentobs.get_trace`
+                             etc.  Defaults to ``False``.  Set via
+                             ``AGENTOBS_ENABLE_TRACE_STORE=1``.
+        trace_store_size:    Maximum number of distinct traces the ring buffer
+                             retains.  Oldest trace is evicted when full.
+                             Default: 100.
     """
 
     exporter: str = "console"
@@ -83,6 +114,12 @@ class AgentOBSConfig:
     signing_key: str | None = None
     redaction_policy: Any = None  # RedactionPolicy | None — avoids circular import
     on_export_error: str = "warn"  # "warn" | "raise" | "drop"
+    include_raw_tool_io: bool = False  # opt-in to store raw tool I/O (ToolCall.arguments_raw / result_raw)
+    sample_rate: float = 1.0          # 0.0–1.0; fraction of traces to emit
+    always_sample_errors: bool = True  # emit error/timeout spans regardless of sample_rate
+    trace_filters: list[Callable[["Event"], bool]] = field(default_factory=list)
+    enable_trace_store: bool = False   # opt-in in-process trace store
+    trace_store_size: int = 100        # ring buffer capacity (number of traces)
 
 
 # ---------------------------------------------------------------------------
@@ -109,6 +146,18 @@ def _load_from_env() -> None:
         value = os.environ.get(env_var)
         if value is not None:
             setattr(_config, field_name, value)
+    # Numeric env vars need explicit conversion.
+    raw_rate = os.environ.get("AGENTOBS_SAMPLE_RATE")
+    if raw_rate is not None:
+        try:
+            rate = float(raw_rate)
+        except ValueError:
+            rate = 1.0
+        _config.sample_rate = max(0.0, min(1.0, rate))
+    # Boolean env var: AGENTOBS_ENABLE_TRACE_STORE=1 / true / yes enables the store.
+    raw_store = os.environ.get("AGENTOBS_ENABLE_TRACE_STORE")
+    if raw_store is not None:
+        _config.enable_trace_store = raw_store.strip().lower() in ("1", "true", "yes")
 
 
 # Apply env vars immediately at import time.

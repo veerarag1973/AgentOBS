@@ -20,6 +20,7 @@ pip install agentobs
 | Extra | Install command | What it enables |
 |-------|-----------------|----------------|
 | `jsonschema` | `pip install "agentobs[jsonschema]"` | `validate_event` with full JSON Schema validation |
+| `openai` | `pip install "agentobs[openai]"` | `agentobs.integrations.openai` — auto-instruments the OpenAI Python SDK via `patch()` / `unpatch()`; includes `_pricing` module (USD/1M-token table for all current OpenAI models) |
 | `http` | `pip install "agentobs[http]"` | `OTLPExporter` and `WebhookExporter` (stdlib transport; reserved for future `httpx` upgrade) |
 | `pydantic` | `pip install "agentobs[pydantic]"` | `agentobs.models` — Pydantic v2 model layer, `model_json_schema()` |
 | `otel` | `pip install "agentobs[otel]"` | `OTelBridgeExporter` — emits events through any configured `TracerProvider` (`opentelemetry-sdk>=1.24`) |
@@ -53,7 +54,7 @@ all optional extras.
 
 ```python
 import agentobs  # pip install agentobs  →  import agentobs
-print(agentobs.__version__)   # 1.0.0
+print(agentobs.__version__)   # 1.0.6
 print(agentobs.SCHEMA_VERSION)  # 2.0
 
 from agentobs import Event, EventType

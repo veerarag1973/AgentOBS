@@ -16,8 +16,10 @@ from agentobs._span import (
     SpanContextManager,
     _resolve_model_info,
     _run_stack,
+    _run_stack_var,
     _span_id,
     _span_stack,
+    _span_stack_var,
     _trace_id,
 )
 from agentobs.namespaces.trace import (
@@ -242,7 +244,7 @@ class TestSpanContextManager:
 
     def test_root_span_has_no_parent(self) -> None:
         # Ensure stack is clear for this test
-        _span_stack().clear()
+        _span_stack_var.set(())
         with SpanContextManager(name="root") as span:
             assert span.parent_span_id is None
 
@@ -285,7 +287,7 @@ class TestSpanContextManager:
 @pytest.mark.unit
 class TestAgentRunContextManager:
     def setup_method(self) -> None:
-        _run_stack().clear()
+        _run_stack_var.set(())
 
     def test_yields_agent_run_context(self) -> None:
         with AgentRunContextManager("my-agent") as run:
@@ -330,8 +332,8 @@ class TestAgentRunContextManager:
 @pytest.mark.unit
 class TestAgentStepContextManager:
     def setup_method(self) -> None:
-        _run_stack().clear()
-        _span_stack().clear()
+        _run_stack_var.set(())
+        _span_stack_var.set(())
 
     def test_step_outside_run_raises(self) -> None:
         with pytest.raises(RuntimeError, match="tracer.agent_step\\(\\)"):  # noqa: SIM117
@@ -397,7 +399,7 @@ class TestAgentStepContextManager:
 @pytest.mark.unit
 class TestAgentRunContextToPayload:
     def setup_method(self) -> None:
-        _run_stack().clear()
+        _run_stack_var.set(())
 
     def test_run_payload_aggregates_steps(self) -> None:
         with AgentRunContextManager("agent") as run:

@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import os
 import sys
+from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -114,12 +115,16 @@ def _row(label: str, value: str, value_colour: str = "") -> str:
 
 
 def _get(payload: dict, *keys: str, default: str = "") -> str:
-    """Safely retrieve a nested value from *payload* as a string."""
+    """Safely retrieve a nested value from *payload* as a string.
+
+    Works with both plain ``dict`` and read-only ``MappingProxyType`` objects
+    (the latter is how :class:`~agentobs.event.Event` stores its payload).
+    """
     obj: object = payload
     for key in keys:
-        if not isinstance(obj, dict):
+        if not isinstance(obj, Mapping):
             return default
-        obj = obj.get(key)
+        obj = obj.get(key)  # type: ignore[union-attr]
     if obj is None:
         return default
     return str(obj)

@@ -12,7 +12,9 @@ from agentobs._span import (
     AgentStepContextManager,
     SpanContextManager,
     _run_stack,
+    _run_stack_var,
     _span_stack,
+    _span_stack_var,
 )
 from agentobs._tracer import Tracer, tracer
 
@@ -22,8 +24,8 @@ from agentobs._tracer import Tracer, tracer
 
 
 def _clean_stacks() -> None:
-    _span_stack().clear()
-    _run_stack().clear()
+    _span_stack_var.set(())
+    _run_stack_var.set(())
 
 
 # ===========================================================================

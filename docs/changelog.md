@@ -6,7 +6,62 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## 1.0.5 (current) — 2026-03-06
+## 1.0.6 (current) — 2026-03-07
+
+**Phase 6 — OpenAI Auto-Instrumentation**
+
+### Added
+
+- **`agentobs.integrations.openai`** — zero-boilerplate OpenAI tracing.
+  Calling `patch()` monkey-patches both `openai.resources.chat.completions.Completions.create`
+  (sync) and `AsyncCompletions.create` (async) so every chat completion
+  automatically populates the active `agentobs` span with token usage, model
+  info, and a computed cost breakdown.
+  - `patch()` / `unpatch()` — idempotent lifecycle; safe to call multiple
+    times; `unpatch()` fully restores original methods.
+  - `is_patched()` — returns `True` after `patch()`, `False` if OpenAI is not
+    installed or `unpatch()` has been called.
+  - `normalize_response(response) -> (TokenUsage, ModelInfo, CostBreakdown)` —
+    extracts all available token counts (input, output, total, cached,
+    reasoning) and computes USD cost from the static pricing table.
+  - `_auto_populate_span(response)` — updates the active span if one is
+    present; silently skips if no span is active or if the span already has
+    `token_usage` set; swallows all instrumentation errors so they never
+    surface in user code.
+- **`agentobs.integrations._pricing`** — static OpenAI pricing table (USD / 1 M
+  tokens) covering GPT-4o, GPT-4o-mini, GPT-4 Turbo, GPT-4, GPT-3.5 Turbo,
+  o1, o1-mini, o1-preview, o3-mini, o3, and the text-embedding-3-* / ada-002
+  families.  Prices reflect OpenAI's published rates as of `2026-03-04`.
+  - `get_pricing(model)` — exact lookup with automatic date-suffix stripping
+    fallback (e.g. `"gpt-4o-2024-11-20"` → `"gpt-4o"`).
+  - `list_models()` — sorted list of all known model names.
+  - `PRICING_DATE = "2026-03-04"` — snapshot date attached to every
+    `CostBreakdown` for auditability.
+- **68 new tests** in `tests/test_phase6_openai_integration.py` covering
+  pricing table correctness, `normalize_response` field mapping, all
+  `_compute_cost` branches (cached discount, o1/o3 reasoning rate, non-negative
+  clamp, pricing-date attachment), `_auto_populate_span` (including the
+  `except Exception: pass` instrumentation-error-swallow branch), patch
+  lifecycle, async wrapper, and end-to-end tracer integration.
+
+### Fixed
+
+- **`openai.py` — `_PATCH_FLAG` consistency**: `patch()` and `unpatch()` now
+  use `setattr` / `delattr` with the `_PATCH_FLAG` constant instead of
+  hardcoding the string `"_agentobs_patched"`, eliminating a silent mismatch
+  risk if the constant is ever renamed.
+- **`openai.py` docstring**: usage example corrected from `agentobs.span()`
+  to `agentobs.tracer.span()`.
+
+### Coverage
+
+- `agentobs/integrations/openai.py`: **100 %** (was 99 %)
+- `agentobs/integrations/_pricing.py`: **100 %**
+- Total suite: **2 407 tests**, **97.00 % coverage**
+
+---
+
+## 1.0.5 — 2026-03-06
 
 **Version bump**
 

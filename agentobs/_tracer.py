@@ -17,9 +17,15 @@ managers to create spans and agent traces::
         with tracer.agent_step("summarize"):
             pass
 
-All context managers are synchronous (no ``async/await``), work under the
-standard Python ``threading`` model, and are re-entrant (each nested span
-creates a child span that inherits the parent's ``trace_id``).
+    # Imperative trace API (Phase 1)
+    trace = tracer.start_trace("research-agent")
+    with trace.llm_call(model="gpt-4o"):
+        ...
+    trace.end()
+
+All context managers support both ``with`` and ``async with``.  Async usage
+is safe because the span stack is backed by :mod:`contextvars` so each asyncio
+task sees its own stack slice.
 """
 
 from __future__ import annotations
@@ -31,6 +37,7 @@ from agentobs._span import (
     AgentStepContextManager,
     SpanContextManager,
 )
+from agentobs._trace import Trace, start_trace as _start_trace
 
 __all__ = ["Tracer", "tracer"]
 
@@ -57,26 +64,32 @@ class Tracer:
         *,
         model: str | None = None,
         operation: str = "chat",
+        temperature: float | None = None,
+        top_p: float | None = None,
+        max_tokens: int | None = None,
         attributes: dict[str, Any] | None = None,
     ) -> SpanContextManager:
         """Create a new :class:`~agentobs._span.SpanContextManager`.
 
         Use as a context manager::
 
-            with tracer.span("llm-call", model="gpt-4o") as s:
-                s.set_attribute("temperature", 0.7)
+            with tracer.span("llm-call", model="gpt-4o", temperature=0.7) as s:
+                s.set_attribute("prompt_tokens", 512)
 
         Args:
-            name:       Human-readable span name (non-empty string).
-            model:      Model name string (e.g. ``"gpt-4o"``).  Used to infer
-                        the provider when no integration has set
-                        :attr:`~agentobs._span.Span.token_usage`.
-            operation:  GenAI operation name (default ``"chat"``).  Any
-                        :class:`~agentobs.namespaces.trace.GenAIOperationName`
-                        value or a custom string.
-            attributes: Initial key-value attributes.  Additional attributes
-                        can be added inside the block via
-                        :meth:`~agentobs._span.Span.set_attribute`.
+            name:        Human-readable span name (non-empty string).
+            model:       Model name string (e.g. ``"gpt-4o"``).  Used to infer
+                         the provider when no integration has set
+                         :attr:`~agentobs._span.Span.token_usage`.
+            operation:   GenAI operation name (default ``"chat"``).  Any
+                         :class:`~agentobs.namespaces.trace.GenAIOperationName`
+                         value or a custom string.
+            temperature: Sampling temperature forwarded to :class:`SpanPayload`.
+            top_p:       Nucleus sampling ``top_p`` value.
+            max_tokens:  Maximum token limit for this LLM call.
+            attributes:  Initial key-value attributes.  Additional attributes
+                         can be added inside the block via
+                         :meth:`~agentobs._span.Span.set_attribute`.
 
         Returns:
             A :class:`~agentobs._span.SpanContextManager` that yields a
@@ -86,6 +99,9 @@ class Tracer:
             name=name,
             model=model,
             operation=operation,
+            temperature=temperature,
+            top_p=top_p,
+            max_tokens=max_tokens,
             attributes=attributes,
         )
 
@@ -148,6 +164,30 @@ class Tracer:
             operation=operation,
             attributes=attributes,
         )
+
+    # ------------------------------------------------------------------
+    # Trace API  (Phase 1)
+    # ------------------------------------------------------------------
+
+    def start_trace(self, agent_name: str, **attributes: Any) -> Trace:
+        """Start a new agent trace and return a :class:`~agentobs._trace.Trace` handle.
+
+        Convenience wrapper around the module-level :func:`~agentobs._trace.start_trace`.
+        The returned :class:`Trace` must be closed with :meth:`~agentobs._trace.Trace.end`
+        or used as a context manager::
+
+            with tracer.start_trace("research-agent") as trace:
+                with trace.llm_call(model="gpt-4o") as s:
+                    ...
+
+        Args:
+            agent_name:   Name of the agent being executed.
+            **attributes: Optional key-value attributes for the root run context.
+
+        Returns:
+            :class:`~agentobs._trace.Trace`
+        """
+        return _start_trace(agent_name, **attributes)
 
 
 # ---------------------------------------------------------------------------

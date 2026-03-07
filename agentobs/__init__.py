@@ -74,6 +74,17 @@ Event routing (RFC Â§14)
 * :func:`~agentobs.stream.iter_file`
 * :func:`~agentobs.stream.aiter_file`
 
+Observability spans & tracing
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+* :class:`~agentobs._span.SpanEvent`
+* :data:`~agentobs.types.SpanErrorCategory`
+
+Debug utilities
+~~~~~~~~~~~~~~~
+* :func:`~agentobs.debug.print_tree`
+* :func:`~agentobs.debug.summary`
+* :func:`~agentobs.debug.visualize`
+
 Governance (RFC Â§13)
 ~~~~~~~~~~~~~~~~~~~~~
 * :class:`~agentobs.governance.EventGovernancePolicy`
@@ -116,6 +127,7 @@ v2.0 â€” RFC-0001 AGENTOBS v2.0 SDK baseline.  Canonical 36-type EventType
 
 from __future__ import annotations
 
+from agentobs.debug import print_tree, summary, visualize
 from agentobs._span import (
     AgentRunContext,
     AgentRunContextManager,
@@ -123,7 +135,31 @@ from agentobs._span import (
     AgentStepContextManager,
     Span,
     SpanContextManager,
+    copy_context,
 )
+
+# ---------------------------------------------------------------------------
+# Phase 1: Trace object and start_trace()
+# ---------------------------------------------------------------------------
+from agentobs._trace import Trace, start_trace
+
+# ---------------------------------------------------------------------------
+# Phase 4: Metrics extraction + in-process trace store
+# ---------------------------------------------------------------------------
+import agentobs.metrics as metrics
+from agentobs._store import (
+    TraceStore,
+    get_last_agent_run,
+    get_store,
+    get_trace,
+    list_llm_calls,
+    list_tool_calls,
+)
+
+# ---------------------------------------------------------------------------
+# Phase 5: Hook registry
+# ---------------------------------------------------------------------------
+from agentobs._hooks import HookRegistry, hooks
 
 # ---------------------------------------------------------------------------
 # Phase 2: Core tracer + span
@@ -253,6 +289,7 @@ from agentobs.namespaces.trace import (
     ModelInfo,
     PricingTier,
     ReasoningStep,
+    SpanEvent,
     SpanKind,
     SpanPayload,
     TokenUsage,
@@ -279,6 +316,7 @@ from agentobs.signing import (
 from agentobs.stream import EventStream, Exporter, aiter_file, iter_file
 from agentobs.types import (
     EventType,
+    SpanErrorCategory,
     get_by_value,
     is_registered,
     namespace_of,
@@ -289,7 +327,7 @@ from agentobs.ulid import generate as generate_ulid
 from agentobs.ulid import validate as validate_ulid
 from agentobs.validate import validate_event
 
-__version__: str = "1.0.5"
+__version__: str = "1.0.6"
 
 __all__: list[str] = [
     "PII_TYPES",
@@ -390,6 +428,8 @@ __all__: list[str] = [
     "SigningError",
     "Span",
     "SpanContextManager",
+    "SpanErrorCategory",
+    "SpanEvent",
     "SpanKind",
     # trace — payloads
     "SpanPayload",
@@ -401,8 +441,25 @@ __all__: list[str] = [
     "TemplateVariableBoundPayload",
     "TokenUsage",
     "ToolCall",
+    # Phase 3 — Debug utilities
+    "print_tree",
+    "summary",
+    "visualize",
+    # Phase 1 — Trace object
+    "Trace",
     # Phase 2 — Tracer + Span
     "Tracer",
+    # Phase 4 — Metrics + trace store
+    "metrics",
+    "TraceStore",
+    "get_store",
+    "get_trace",
+    "get_last_agent_run",
+    "list_tool_calls",
+    "list_llm_calls",
+    # Phase 5 — Hooks
+    "HookRegistry",
+    "hooks",
     # Phase 1 — Configuration
     "AgentOBSConfig",
     "ULIDError",
@@ -416,6 +473,8 @@ __all__: list[str] = [
     "assert_verified",
     "configure",
     "contains_pii",
+    # Context propagation helper (Phase 1)
+    "copy_context",
     "extract_timestamp_ms",
     # ULID
     "generate_ulid",
@@ -435,6 +494,7 @@ __all__: list[str] = [
     "set_global_policy",
     # HMAC Signing & Audit Chain (RFC Â§11)
     "sign",
+    "start_trace",
     "tracer",
     "v1_to_v2",
     "v2_migration_roadmap",

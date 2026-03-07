@@ -46,13 +46,14 @@ from __future__ import annotations
 
 import re
 from enum import Enum
-from typing import Final
+from typing import Final, Literal
 
 from agentobs.exceptions import EventTypeError
 
 __all__ = [
     "EVENT_TYPE_PATTERN",
     "EventType",
+    "SpanErrorCategory",
     "is_registered",
     "namespace_of",
     "validate_custom",
@@ -417,3 +418,21 @@ def get_by_value(value: str) -> EventType | None:
         return EventType(value)
     except ValueError:
         return None
+
+
+# ---------------------------------------------------------------------------
+# Span error category
+# ---------------------------------------------------------------------------
+
+SpanErrorCategory = Literal[
+    "agent_error",
+    "llm_error",
+    "tool_error",
+    "timeout_error",
+    "unknown_error",
+]
+"""Valid values for :attr:`~agentobs._span.Span.error_category`.
+
+Automatically set by :meth:`~agentobs._span.Span.record_error` based
+on the exception type, or supplied explicitly by the caller.
+"""

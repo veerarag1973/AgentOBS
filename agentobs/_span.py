@@ -5,19 +5,24 @@ Provides the runtime tracing primitives that back ``tracer.span()``,
 
 Design notes
 ------------
-* **Thread-local stacks** keep parent-child relationships correct across
-  concurrent threads without global locking.
+* **Context-variable stacks** — uses :mod:`contextvars` so that context
+  propagates correctly across asyncio tasks, thread-pool executors, and
+  concurrent threads without manual ID management.
+* **Immutable stack tuples** — each ``__enter__`` sets a *new* tuple on the
+  ContextVar and saves the reset token; ``__exit__`` calls
+  ``ContextVar.reset(token)`` so concurrent tasks each see their own stack
+  slice and cannot bleed into each other.
 * **OTel-compatible IDs** — ``span_id`` is 8 random bytes (16 hex chars),
   ``trace_id`` is 16 random bytes (32 hex chars), matching the OTel wire
   format expected by :class:`~agentobs.namespaces.trace.SpanPayload`.
-* **Zero external dependencies** — stdlib only (``os``, ``time``,
-  ``threading``, ``types``).
+* **Zero external dependencies** — stdlib only (``contextvars``, ``os``,
+  ``time``, ``types``).
 """
 
 from __future__ import annotations
 
+import contextvars
 import os
-import threading
 import time
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
@@ -31,6 +36,7 @@ from agentobs.namespaces.trace import (
     GenAISystem,
     ModelInfo,
     ReasoningStep,
+    SpanEvent,
     SpanKind,
     SpanPayload,
     TokenUsage,
@@ -38,6 +44,7 @@ from agentobs.namespaces.trace import (
 )
 
 if TYPE_CHECKING:
+    import threading
     from types import TracebackType
 
 __all__ = [
@@ -47,6 +54,7 @@ __all__ = [
     "AgentStepContextManager",
     "Span",
     "SpanContextManager",
+    "copy_context",
 ]
 
 # ---------------------------------------------------------------------------
@@ -70,31 +78,39 @@ def _now_ns() -> int:
 
 
 # ---------------------------------------------------------------------------
-# Thread-local context stacks
+# Context-variable stacks (asyncio-safe, thread-safe)
 # ---------------------------------------------------------------------------
 
-_local = threading.local()
+# Each ContextVar stores an *immutable tuple* so that asyncio tasks spawned
+# inside a span inherit the parent's stack slice without mutating it.
+_span_stack_var: contextvars.ContextVar[tuple[Span, ...]] = contextvars.ContextVar(
+    "agentobs_span_stack", default=()
+)
+_run_stack_var: contextvars.ContextVar[tuple[AgentRunContext, ...]] = contextvars.ContextVar(
+    "agentobs_run_stack", default=()
+)
 
 
-def _span_stack() -> list[Span]:
-    """Return the per-thread span stack, creating it on first access."""
-    if not hasattr(_local, "span_stack"):
-        _local.span_stack = []
-    return _local.span_stack
+def _span_stack() -> tuple[Span, ...]:
+    """Return the current context's span stack (immutable tuple)."""
+    return _span_stack_var.get()
 
 
-def _run_stack() -> list[AgentRunContext]:
-    """Return the per-thread agent-run stack, creating it on first access."""
-    if not hasattr(_local, "run_stack"):
-        _local.run_stack = []
-    return _local.run_stack
+def _run_stack() -> tuple[AgentRunContext, ...]:
+    """Return the current context's agent-run stack (immutable tuple)."""
+    return _run_stack_var.get()
 
 
-def _step_list() -> list[AgentStepContext]:
-    """Return the per-thread step accumulator for the active agent run."""
-    if not hasattr(_local, "step_list"):
-        _local.step_list = []
-    return _local.step_list
+def copy_context() -> contextvars.Context:
+    """Return a shallow copy of the current :mod:`contextvars` context.
+
+    Pass this to :func:`contextvars.Context.run` when spawning threads or
+    ``loop.run_in_executor`` tasks that should inherit the active span::
+
+        ctx = agentobs.copy_context()
+        loop.run_in_executor(None, ctx.run, my_blocking_fn)
+    """
+    return contextvars.copy_context()
 
 
 # ---------------------------------------------------------------------------
@@ -151,6 +167,12 @@ class Span:
     token_usage: TokenUsage | None = None
     cost: CostBreakdown | None = None
     tool_calls: list[ToolCall] = field(default_factory=list)
+    events: list[SpanEvent] = field(default_factory=list)
+    temperature: float | None = None
+    top_p: float | None = None
+    max_tokens: int | None = None
+    error_category: str | None = None  # one of SpanErrorCategory literals
+    _timeout_timer: "threading.Timer | None" = field(default=None, init=False, repr=False)
 
     # ------------------------------------------------------------------
     # Mutation methods (call from inside ``with tracer.span(...) as s:``)
@@ -167,15 +189,39 @@ class Span:
             raise ValueError("set_attribute: key must be a non-empty string")
         self.attributes[key] = value
 
-    def record_error(self, exc: Exception) -> None:
+    def add_event(self, name: str, metadata: dict[str, Any] | None = None) -> None:
+        """Record a named event at this point in time within the span.
+
+        Args:
+            name:     Event name (non-empty string).
+            metadata: Optional key-value metadata for this event.
+        """
+        self.events.append(SpanEvent(name=name, metadata=metadata or {}))
+
+    def record_error(
+        self,
+        exc: Exception,
+        category: str | None = None,
+    ) -> None:
         """Record an exception on this span, setting ``status = "error"``.
 
         Args:
-            exc: The exception that caused the failure.
+            exc:      The exception that caused the failure.
+            category: Optional error category — one of ``"agent_error"``,
+                      ``"llm_error"``, ``"tool_error"``, ``"timeout_error"``,
+                      ``"unknown_error"``.  When omitted, :class:`TimeoutError`
+                      is automatically mapped to ``"timeout_error"``; all
+                      others default to ``"unknown_error"``.
         """
         self.status = "error"
         self.error = str(exc)
         self.error_type = type(exc).__qualname__
+        if category is not None:
+            self.error_category = category
+        elif isinstance(exc, TimeoutError):
+            self.error_category = "timeout_error"
+        else:
+            self.error_category = "unknown_error"
 
     def set_token_usage(self, token_usage: TokenUsage) -> None:
         """Attach token usage data (called by provider integrations)."""
@@ -189,11 +235,53 @@ class Span:
     # Internal lifecycle
     # ------------------------------------------------------------------
 
+    def set_timeout_deadline(self, seconds: float) -> None:
+        """Schedule this span to auto-timeout if not closed within *seconds*.
+
+        If the span is still open when the deadline passes, its ``status``
+        is set to ``"timeout"`` and ``error_category`` to ``"timeout_error"``.
+        The background timer is automatically cancelled when the span closes
+        normally via :meth:`end`.
+
+        Args:
+            seconds: Deadline in seconds (must be > 0).
+
+        Raises:
+            ValueError: If *seconds* is not greater than zero.
+        """
+        if seconds <= 0:
+            raise ValueError(f"set_timeout_deadline: seconds must be > 0, got {seconds!r}")
+        import threading  # noqa: PLC0415
+
+        # Cancel any previously registered timer before installing a new one.
+        # Without this guard, double-calling would orphan the first timer.
+        if self._timeout_timer is not None:
+            self._timeout_timer.cancel()
+            self._timeout_timer = None
+
+        def _timeout_fn() -> None:
+            # Guard is evaluated on CPython under the GIL.  end_ns is set by
+            # end() before cancel() is called; on CPython this sequence is
+            # safe.  The double guard (end_ns + status) means a span that has
+            # already errored or finished is never overwritten.
+            if self.end_ns is None and self.status == "ok":
+                self.status = "timeout"
+                self.error = f"Span timed out after {seconds:.3f}s"
+                self.error_category = "timeout_error"
+
+        timer = threading.Timer(seconds, _timeout_fn)
+        timer.daemon = True
+        timer.start()
+        self._timeout_timer = timer
+
     def end(self) -> None:
         """Finalise the span by recording the end time and computing duration."""
         if self.end_ns is None:
             self.end_ns = _now_ns()
             self.duration_ms = (self.end_ns - self.start_ns) / 1_000_000.0
+            if self._timeout_timer is not None:
+                self._timeout_timer.cancel()
+                self._timeout_timer = None
 
     def to_span_payload(self) -> SpanPayload:
         """Serialise this span to a :class:`~agentobs.namespaces.trace.SpanPayload`.
@@ -234,6 +322,11 @@ class Span:
             error=self.error,
             error_type=self.error_type,
             attributes=self.attributes if self.attributes else None,
+            temperature=self.temperature,
+            top_p=self.top_p,
+            max_tokens=self.max_tokens,
+            error_category=self.error_category,
+            events=list(self.events),
         )
 
 
@@ -253,7 +346,7 @@ class SpanContextManager:
         # → SpanPayload event emitted on exit
 
     The :class:`Span` instance is bound to the ``as`` target and is also
-    pushed onto the thread-local span stack so nested spans can inherit the
+    pushed onto the context-variable span stack so nested spans can inherit the
     ``trace_id``.
     """
 
@@ -262,11 +355,17 @@ class SpanContextManager:
         name: str,
         model: str | None = None,
         operation: str = "chat",
+        temperature: float | None = None,
+        top_p: float | None = None,
+        max_tokens: int | None = None,
         attributes: dict[str, Any] | None = None,
     ) -> None:
         self._name = name
         self._model = model
         self._operation = operation
+        self._temperature = temperature
+        self._top_p = top_p
+        self._max_tokens = max_tokens
         self._initial_attributes = dict(attributes or {})
         self._span: Span | None = None
 
@@ -276,6 +375,7 @@ class SpanContextManager:
 
     def __enter__(self) -> Span:
         stack = _span_stack()
+        run_tuple = _run_stack()
 
         # Inherit trace_id and parent_span_id from the enclosing span.
         if stack:
@@ -283,12 +383,13 @@ class SpanContextManager:
             trace_id = parent.trace_id
             parent_span_id = parent.span_id
         else:
-            trace_id = _trace_id()
+            # Fall back to the enclosing run context's trace_id when available
+            # so that all spans within a Trace share one trace_id.
+            trace_id = run_tuple[-1].trace_id if run_tuple else _trace_id()
             parent_span_id = None
 
         # Inherit agent_run_id from the enclosing run context.
-        run_stack = _run_stack()
-        agent_run_id = run_stack[-1].agent_run_id if run_stack else None
+        agent_run_id = run_tuple[-1].agent_run_id if run_tuple else None
 
         self._span = Span(
             name=self._name,
@@ -298,10 +399,22 @@ class SpanContextManager:
             agent_run_id=agent_run_id,
             model=self._model,
             operation=self._operation,
+            temperature=self._temperature,
+            top_p=self._top_p,
+            max_tokens=self._max_tokens,
             attributes=dict(self._initial_attributes),
             start_ns=_now_ns(),
         )
-        stack.append(self._span)
+        # Push onto an immutable tuple and save the reset token.
+        self._stack_token: contextvars.Token[tuple[Span, ...]] = _span_stack_var.set(
+            stack + (self._span,)
+        )
+        # Fire start hooks (errors suppressed — hooks must never abort user code).
+        try:
+            from agentobs._hooks import hooks as _hooks  # noqa: PLC0415
+            _hooks._fire_start(self._span)
+        except Exception:
+            pass
         return self._span
 
     def __exit__(
@@ -313,15 +426,23 @@ class SpanContextManager:
         assert self._span is not None, "SpanContextManager.__exit__ called before __enter__"
 
         # Record any unhandled exception on the span.
-        if exc_val is not None and self._span.status == "ok":
+        # Exclude BaseException subclasses that are control-flow signals
+        # (KeyboardInterrupt, SystemExit, GeneratorExit) — only true
+        # application exceptions (Exception subclasses) are recorded.
+        if exc_val is not None and isinstance(exc_val, Exception) and self._span.status == "ok":
             self._span.record_error(exc_val)
 
         self._span.end()
 
-        # Pop from the span stack.
-        stack = _span_stack()
-        if stack and stack[-1] is self._span:
-            stack.pop()
+        # Restore the stack to its pre-enter state.
+        _span_stack_var.reset(self._stack_token)
+
+        # Fire end hooks before export (errors suppressed).
+        try:
+            from agentobs._hooks import hooks as _hooks  # noqa: PLC0415
+            _hooks._fire_end(self._span)
+        except Exception:
+            pass
 
         # Emit the event.
         _s = None
@@ -334,6 +455,23 @@ class SpanContextManager:
 
         # Do NOT suppress the original exception.
         return False
+
+    # ------------------------------------------------------------------
+    # Async context manager protocol (delegates to sync implementation)
+    # ------------------------------------------------------------------
+
+    async def __aenter__(self) -> Span:
+        """Async entry — identical to ``__enter__``; safe for ``async with``."""
+        return self.__enter__()
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> bool:
+        """Async exit — identical to ``__exit__``; safe for ``async with``."""
+        return self.__exit__(exc_type, exc_val, exc_tb)
 
 
 # ---------------------------------------------------------------------------
@@ -407,6 +545,7 @@ class AgentStepContext:
             cost=self.cost,
             error=self.error,
             error_type=self.error_type,
+            step_name=self.step_name,
         )
 
 
@@ -425,17 +564,17 @@ class AgentStepContextManager:
         self._ctx: AgentStepContext | None = None
 
     def __enter__(self) -> AgentStepContext:
-        run_stack = _run_stack()
-        if not run_stack:
+        run_tuple = _run_stack()
+        if not run_tuple:
             raise RuntimeError(
                 "tracer.agent_step() must be used inside a tracer.agent_run() context"
             )
-        run = run_stack[-1]
+        run = run_tuple[-1]
 
         # Inherit trace_id + parent from any enclosing span.
-        span_stack = _span_stack()
-        if span_stack:
-            parent = span_stack[-1]
+        span_tuple = _span_stack()
+        if span_tuple:
+            parent = span_tuple[-1]
             trace_id = parent.trace_id
             parent_span_id = parent.span_id
         else:
@@ -470,9 +609,9 @@ class AgentStepContextManager:
         self._ctx.end()
 
         # Register step with the parent run context.
-        run_stack = _run_stack()
-        if run_stack:
-            run_stack[-1].record_step(self._ctx)
+        run_tuple = _run_stack()
+        if run_tuple:
+            run_tuple[-1].record_step(self._ctx)
 
         # Emit agent step event.
         _s = None
@@ -484,6 +623,23 @@ class AgentStepContextManager:
                 _s._handle_export_error(exc)
 
         return False
+
+    # ------------------------------------------------------------------
+    # Async context manager protocol
+    # ------------------------------------------------------------------
+
+    async def __aenter__(self) -> AgentStepContext:
+        """Async entry — identical to ``__enter__``."""
+        return self.__enter__()
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> bool:
+        """Async exit — identical to ``__exit__``."""
+        return self.__exit__(exc_type, exc_val, exc_tb)
 
 
 # ---------------------------------------------------------------------------
@@ -592,7 +748,10 @@ class AgentRunContextManager:
             root_span_id=_span_id(),
             start_ns=_now_ns(),
         )
-        _run_stack().append(self._ctx)
+        # Push onto the immutable run-stack tuple and save the reset token.
+        self._run_token: contextvars.Token[tuple[AgentRunContext, ...]] = _run_stack_var.set(
+            _run_stack() + (self._ctx,)
+        )
         return self._ctx
 
     def __exit__(
@@ -607,9 +766,8 @@ class AgentRunContextManager:
             self._ctx.record_error(exc_val)
         self._ctx.end()
 
-        run_stack = _run_stack()
-        if run_stack and run_stack[-1] is self._ctx:
-            run_stack.pop()
+        # Restore the run-stack to its pre-enter state.
+        _run_stack_var.reset(self._run_token)
 
         _s = None
         try:
@@ -620,6 +778,23 @@ class AgentRunContextManager:
                 _s._handle_export_error(exc)
 
         return False
+
+    # ------------------------------------------------------------------
+    # Async context manager protocol
+    # ------------------------------------------------------------------
+
+    async def __aenter__(self) -> AgentRunContext:
+        """Async entry — identical to ``__enter__``."""
+        return self.__enter__()
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> bool:
+        """Async exit — identical to ``__exit__``."""
+        return self.__exit__(exc_type, exc_val, exc_tb)
 
 
 # ---------------------------------------------------------------------------

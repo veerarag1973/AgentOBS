@@ -254,4 +254,4 @@ class TestConfigureIntegration:
 
     def test_version_is_1_0_0(self):
         """agentobs.__version__ must match the current release."""
-        assert agentobs.__version__ == "1.0.5"
+        assert agentobs.__version__ == "1.0.6"

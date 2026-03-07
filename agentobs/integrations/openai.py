@@ -22,7 +22,7 @@ Usage::
     import agentobs
     agentobs.configure(exporter="console")
 
-    with agentobs.span("chat", model="gpt-4o") as span:
+    with agentobs.tracer.span("chat", model="gpt-4o") as span:
         resp = client.chat.completions.create(
             model="gpt-4o",
             messages=[{"role": "user", "content": "Hello"}],
@@ -119,7 +119,7 @@ def patch() -> None:
     except (ImportError, AttributeError):  # pragma: no cover
         pass
 
-    openai_mod._agentobs_patched = True  # type: ignore[attr-defined]
+    setattr(openai_mod, _PATCH_FLAG, True)
 
 
 def unpatch() -> None:
@@ -156,7 +156,7 @@ def unpatch() -> None:
         pass
 
     try:  # noqa: SIM105
-        del openai_mod._agentobs_patched  # type: ignore[attr-defined]
+        delattr(openai_mod, _PATCH_FLAG)
     except AttributeError:  # pragma: no cover
         pass
 
@@ -312,8 +312,12 @@ def _compute_cost(
     reasoning_cost = 0.0
     reasoning_rate = pricing.get("reasoning")
     if reasoning_tokens and reasoning_rate is not None:
-        # Some models bill reasoning tokens separately; subtract them from regular
-        # output_cost and add at the reasoning rate instead
+        # Some models bill reasoning tokens at a rate that may differ from the
+        # output rate (future-proofing).  For o1, reasoning_rate == output_rate
+        # so this branch is arithmetically a no-op, but the code path is kept
+        # for models where they diverge.
+        # Reasoning tokens are already counted within output_tokens by the API,
+        # so we rebill them separately and remove them from regular output cost.
         regular_output = output_tokens - reasoning_tokens
         regular_output = max(0, regular_output)
         output_cost = regular_output * output_rate / 1_000_000.0

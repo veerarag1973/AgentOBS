@@ -20,11 +20,12 @@ config changes (call :func:`_reset_exporter` after ``configure()``).
 
 from __future__ import annotations
 
+import random
 import re
 import threading
 import warnings
 
-from agentobs.config import get_config
+from agentobs.config import AgentOBSConfig, get_config
 from agentobs.event import Event, Tags
 from agentobs.types import EventType
 
@@ -106,6 +107,13 @@ def _reset_exporter() -> None:
         _cached_exporter = None
     with _sign_lock:
         _prev_signed_event = None
+    # Recreate the trace store with the (possibly updated) size from config.
+    try:
+        from agentobs._store import _reset_store  # noqa: PLC0415
+        from agentobs.config import get_config as _gc  # noqa: PLC0415
+        _reset_store(_gc().trace_store_size)
+    except Exception:
+        pass  # never let store reset failures affect the exporter reset
 
 
 def _active_exporter() -> object:
@@ -183,11 +191,14 @@ def _build_event(
 def emit_span(span: object) -> None:
     """Build a ``SpanPayload`` event from *span* and export it.
 
+    Also notifies the active :class:`~agentobs._trace.Trace` collector (if any)
+    so it can accumulate spans for :meth:`~agentobs._trace.Trace.to_json`.
+
     Args:
         span: A :class:`~agentobs._span.Span` instance.
     """
     # Import here to avoid circular import at module load time.
-    from agentobs._span import Span  # noqa: PLC0415
+    from agentobs._span import Span, _run_stack_var  # noqa: PLC0415
 
     assert isinstance(span, Span)
     payload = span.to_span_payload()
@@ -203,6 +214,16 @@ def emit_span(span: object) -> None:
         parent_span_id=span.parent_span_id,
     )
     _dispatch(event)
+
+    # Notify the Trace collector (set by start_trace()) so it can accumulate spans.
+    run_tuple = _run_stack_var.get()
+    if run_tuple:
+        collector = getattr(run_tuple[-1], "_trace_collector", None)
+        if collector is not None:
+            try:
+                collector._record_span(span)
+            except Exception:
+                pass  # never let collection errors affect the main emit path
 
 
 def emit_agent_step(step: object) -> None:
@@ -241,10 +262,73 @@ def emit_agent_run(run: object) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _should_emit(event: "Event", cfg: "AgentOBSConfig") -> bool:
+    """Return ``True`` if *event* should be exported under the current config.
+
+    The sampling decision is made in this order:
+
+    1. **Error pass-through** — when ``always_sample_errors=True`` (the
+       default), spans with ``status="error"`` or ``status="timeout"`` are
+       always emitted regardless of *sample_rate*.
+    2. **Probabilistic sampling** — the decision is deterministic per
+       ``trace_id``: all spans of a given trace are sampled or dropped
+       together.  Uses the first 8 hex digits of the trace_id as a
+       32-bit hash so the decision is reproducible.
+    3. **Custom filters** — all ``trace_filters`` callables must return
+       ``True`` for the event to be emitted.
+
+    Args:
+        event: The candidate event.
+        cfg:   Live :class:`~agentobs.config.AgentOBSConfig` snapshot.
+
+    Returns:
+        ``True`` to emit, ``False`` to drop.
+    """
+    # Fast path: no sampling configured, no filters — always emit.
+    if cfg.sample_rate >= 1.0 and not cfg.trace_filters:
+        return True
+
+    # Step 1: always emit errors when configured.
+    if cfg.always_sample_errors:
+        status = event.payload.get("status", "")
+        if status in ("error", "timeout"):
+            return True
+
+    # Step 2: probabilistic sampling keyed on trace_id.
+    if cfg.sample_rate < 1.0:
+        trace_id: str = event.payload.get("trace_id", "")
+        if trace_id:
+            # Use the first 8 hex chars (32 bits) as a cheap deterministic hash.
+            token = trace_id[:8]
+            try:
+                bucket = int(token, 16)
+            except ValueError:
+                bucket = 0
+            # Normalise to [0, 1) and compare against sample_rate.
+            if bucket / 0xFFFF_FFFF > cfg.sample_rate:
+                return False
+        else:
+            # No trace_id: apply pure random sampling.
+            if random.random() > cfg.sample_rate:
+                return False
+
+    # Step 3: custom filters (all must pass).
+    for f in cfg.trace_filters:
+        try:
+            if not f(event):
+                return False
+        except Exception:
+            pass  # a failing filter never silently drops the event
+
+    return True
+
+
 def _dispatch(event: Event) -> None:
     """Export *event* through the active exporter, handling errors per policy.
 
     Pipeline (in order):
+    0. **Sampling** — apply probabilistic sampling and custom filters; drop
+       the event immediately if it should not be emitted.
     1. **Redaction** — apply :class:`~agentobs.redact.RedactionPolicy` when
        ``config.redaction_policy`` is set.  PII is masked before anything
        else sees the event.
@@ -258,6 +342,10 @@ def _dispatch(event: Event) -> None:
     global _prev_signed_event  # noqa: PLW0603
     try:
         cfg = get_config()
+
+        # 0. Sampling — drop early to avoid unnecessary work.
+        if not _should_emit(event, cfg):
+            return
 
         # 1. Redaction (must occur before signing so signatures cover
         #    the already-redacted payload).
@@ -278,5 +366,13 @@ def _dispatch(event: Event) -> None:
         # 3. Export.
         exporter = _active_exporter()
         exporter.export(event)  # type: ignore[attr-defined]
+
+        # 4. Trace store (opt-in ring buffer for programmatic querying).
+        if cfg.enable_trace_store:
+            try:
+                from agentobs._store import get_store  # noqa: PLC0415
+                get_store().record(event)
+            except Exception as exc:
+                _handle_export_error(exc)
     except Exception as exc:
         _handle_export_error(exc)

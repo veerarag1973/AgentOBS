@@ -50,6 +50,7 @@ AgentRunPayload
 from __future__ import annotations
 
 import re
+import time
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -65,6 +66,7 @@ __all__ = [
     "ModelInfo",
     "PricingTier",
     "ReasoningStep",
+    "SpanEvent",
     "SpanKind",
     # Payloads
     "SpanPayload",
@@ -387,12 +389,54 @@ class PricingTier:
         )
 
 
+@dataclass
+class SpanEvent:
+    """A named, timestamped event within a span.
+
+    Unlike spans (which represent durations), events are instantaneous
+    points in time recorded inside an enclosing span.
+
+    Attributes:
+        name:         Event name (e.g. ``"cache.hit"``, ``"retry.attempt.2"``).
+        timestamp_ns: Nanosecond-precision Unix timestamp (auto-filled on creation).
+        metadata:     Arbitrary key-value metadata attached to this event.
+    """
+
+    name: str
+    timestamp_ns: int = field(default_factory=time.time_ns)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.name, str) or not self.name:
+            raise ValueError("SpanEvent.name must be a non-empty string")
+        if self.timestamp_ns < 0:
+            raise ValueError("SpanEvent.timestamp_ns must be non-negative")
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialise to a plain dict."""
+        return {
+            "name": self.name,
+            "timestamp_ns": self.timestamp_ns,
+            "metadata": self.metadata,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> SpanEvent:
+        """Deserialise from a plain dict."""
+        return cls(
+            name=data["name"],
+            timestamp_ns=int(data["timestamp_ns"]),
+            metadata=dict(data.get("metadata", {})),
+        )
+
+
 @dataclass(frozen=True)
 class ToolCall:
     """RFC-0001 §8.1 — A single tool invocation within a span.
 
     ``arguments_hash`` stores a SHA-256 hash of the canonical JSON of
-    arguments.  Raw argument values SHOULD NOT be stored (§20.4).
+    arguments.  Raw argument values SHOULD NOT be stored by default (§20.4);
+    set ``AgentOBSConfig.include_raw_tool_io = True`` to opt in.
     """
 
     tool_call_id: str
@@ -401,6 +445,10 @@ class ToolCall:
     arguments_hash: str | None = None  # 64 lowercase hex chars, no prefix
     error_type: str | None = None
     duration_ms: float | None = None
+    arguments_raw: str | None = None   # populated only when include_raw_tool_io=True
+    result_raw: str | None = None      # populated only when include_raw_tool_io=True
+    retry_count: int | None = None
+    external_api: str | None = None
 
     _VALID_STATUSES = frozenset({"success", "error", "timeout", "cancelled"})
 
@@ -415,6 +463,8 @@ class ToolCall:
             raise ValueError("ToolCall.arguments_hash must be 64 lowercase hex chars (SHA-256)")
         if self.duration_ms is not None and self.duration_ms < 0:
             raise ValueError("ToolCall.duration_ms must be non-negative")
+        if self.retry_count is not None and self.retry_count < 0:
+            raise ValueError("ToolCall.retry_count must be a non-negative integer")
 
     def to_dict(self) -> dict[str, Any]:
         """Serialise the payload to a plain ``dict``."""
@@ -429,6 +479,17 @@ class ToolCall:
             d["error_type"] = self.error_type
         if self.duration_ms is not None:
             d["duration_ms"] = self.duration_ms
+        # arguments_raw / result_raw contain raw PII; only emit when the
+        # operator has explicitly enabled raw tool I/O capture.
+        from agentobs.config import get_config  # noqa: PLC0415
+        if self.arguments_raw is not None and get_config().include_raw_tool_io:
+            d["arguments_raw"] = self.arguments_raw
+        if self.result_raw is not None and get_config().include_raw_tool_io:
+            d["result_raw"] = self.result_raw
+        if self.retry_count is not None:
+            d["retry_count"] = self.retry_count
+        if self.external_api is not None:
+            d["external_api"] = self.external_api
         return d
 
     @classmethod
@@ -441,6 +502,10 @@ class ToolCall:
             arguments_hash=data.get("arguments_hash"),
             error_type=data.get("error_type"),
             duration_ms=float(data["duration_ms"]) if "duration_ms" in data else None,
+            arguments_raw=data.get("arguments_raw"),
+            result_raw=data.get("result_raw"),
+            retry_count=int(data["retry_count"]) if "retry_count" in data else None,
+            external_api=data.get("external_api"),
         )
 
 
@@ -575,6 +640,11 @@ class SpanPayload:
     error: str | None = None
     error_type: str | None = None
     attributes: dict[str, Any] | None = None
+    temperature: float | None = None
+    top_p: float | None = None
+    max_tokens: int | None = None
+    error_category: str | None = None
+    events: list[SpanEvent] = field(default_factory=list)
 
     _VALID_STATUSES = frozenset({"ok", "error", "timeout"})
 
@@ -633,6 +703,16 @@ class SpanPayload:
             d["error_type"] = self.error_type
         if self.attributes is not None:
             d["attributes"] = self.attributes
+        if self.temperature is not None:
+            d["temperature"] = self.temperature
+        if self.top_p is not None:
+            d["top_p"] = self.top_p
+        if self.max_tokens is not None:
+            d["max_tokens"] = self.max_tokens
+        if self.error_category is not None:
+            d["error_category"] = self.error_category
+        if self.events:
+            d["events"] = [e.to_dict() for e in self.events]
         return d
 
     @classmethod
@@ -669,6 +749,11 @@ class SpanPayload:
             error=data.get("error"),
             error_type=data.get("error_type"),
             attributes=data.get("attributes"),
+            temperature=float(data["temperature"]) if "temperature" in data else None,
+            top_p=float(data["top_p"]) if "top_p" in data else None,
+            max_tokens=int(data["max_tokens"]) if "max_tokens" in data else None,
+            error_category=data.get("error_category"),
+            events=[SpanEvent.from_dict(e) for e in data.get("events", [])],
         )
 
 
@@ -698,6 +783,7 @@ class AgentStepPayload:
     cost: CostBreakdown | None = None
     error: str | None = None
     error_type: str | None = None
+    step_name: str | None = None
 
     _VALID_STATUSES = frozenset({"ok", "error", "timeout"})
 
@@ -750,6 +836,8 @@ class AgentStepPayload:
             d["error"] = self.error
         if self.error_type is not None:
             d["error_type"] = self.error_type
+        if self.step_name is not None:
+            d["step_name"] = self.step_name
         return d
 
     @classmethod
@@ -779,6 +867,7 @@ class AgentStepPayload:
             cost=CostBreakdown.from_dict(data["cost"]) if "cost" in data else None,
             error=data.get("error"),
             error_type=data.get("error_type"),
+            step_name=data.get("step_name"),
         )
 
 
