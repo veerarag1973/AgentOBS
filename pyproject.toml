@@ -7,7 +7,7 @@ build-backend = "hatchling.build"
 # ---------------------------------------------------------------------------
 [project]
 name = "agentobs"
-version = "1.0.6"
+version = "2.0.0"
 description = "AgentOBS — reference implementation of RFC-0001 AGENTOBS, the Observability Schema Standard for Agentic AI Systems"
 readme = "README.md"
 license = { text = "MIT" }
@@ -72,6 +72,7 @@ kafka   = ["kafka-python>=2.0"]
 # Phase 9 framework integrations
 langchain   = ["langchain-core>=0.2"]
 llamaindex  = ["llama-index-core>=0.10"]
+crewai      = ["crewai>=0.28"]
 # Convenience bundle
 all = [
     "pydantic>=2.7",
@@ -83,6 +84,7 @@ all = [
     "kafka-python>=2.0",
     "langchain-core>=0.2",
     "llama-index-core>=0.10",
+    "crewai>=0.28",
 ]
 docs = [
     "sphinx>=7.0",

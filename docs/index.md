@@ -1,7 +1,7 @@
 # Documentation Index
 
 > **AgentOBS** (`agentobs`) — The reference implementation of the [AGENTOBS Standard](https://www.getspanforge.com/standard) (RFC-0001), the open event-schema standard for observability of agentic AI systems.  
-> Current release: **1.0.6** — [Changelog](changelog.md) · [![PyPI](https://img.shields.io/pypi/v/agentobs?color=4c8cbf&logo=pypi&logoColor=white)](https://pypi.org/project/agentobs/)
+> Current release: **2.0.0** — [Changelog](changelog.md) · [![PyPI](https://img.shields.io/pypi/v/agentobs?color=4c8cbf&logo=pypi&logoColor=white)](https://pypi.org/project/agentobs/)
 
 This index links to every documentation page in this folder.
 
@@ -22,12 +22,15 @@ This index links to every documentation page in this folder.
 |------|-------------|
 | [User Guide](user_guide/index.md) | Overview of all user guide topics |
 | [Events](user_guide/events.md) | Event envelope, event types, serialisation, validation, ULIDs |
+| [Tracing API](user_guide/tracing.md) | `Trace`, `start_trace()`, async context managers, `span.add_event()`, error categories, timeout deadline |
 | [HMAC Signing & Audit Chains](user_guide/signing.md) | Sign events, build tamper-evident chains, detect tampering |
 | [PII Redaction](user_guide/redaction.md) | Sensitivity levels, redaction policies, PII detection |
 | [Compliance & Tenant Isolation](user_guide/compliance.md) | Compatibility checklist, chain integrity, tenant isolation |
 | [Export Backends & EventStream](user_guide/export.md) | JSONL, Webhook, OTLP, Datadog, Grafana Loki exporters; EventStream; Kafka source |
 | [Governance, Consumer Registry & Deprecations](user_guide/governance.md) | Block/warn event types, declare schema dependencies, track deprecations |
 | [Migration Guide](user_guide/migration.md) | v2 migration roadmap, deprecation records, `v1_to_v2()` scaffold |
+| [Debugging & Visualization](user_guide/debugging.md) | `print_tree()`, `summary()`, `visualize()`, and sampling controls |
+| [Metrics & Analytics](user_guide/metrics.md) | `metrics.aggregate()`, `MetricsSummary`, `TraceStore`, `get_trace()` |
 
 ---
 
@@ -48,7 +51,12 @@ This index links to every documentation page in this folder.
 | [consumer](api/consumer.md) | `agentobs.consumer` — ConsumerRegistry, IncompatibleSchemaError |
 | [governance](api/governance.md) | `agentobs.governance` — EventGovernancePolicy, GovernanceViolationError |
 | [deprecations](api/deprecations.md) | `agentobs.deprecations` — DeprecationRegistry, warn_if_deprecated() |
-| [integrations](api/integrations.md) | `agentobs.integrations` — LangChain + LlamaIndex adapters |
+| [integrations](api/integrations.md) | `agentobs.integrations` — LangChain, LlamaIndex, OpenAI, CrewAI adapters |
+| [trace](api/trace.md) | `agentobs._trace` — `Trace` class and `start_trace()` |
+| [debug](api/debug.md) | `agentobs.debug` — `print_tree()`, `summary()`, `visualize()` |
+| [metrics](api/metrics.md) | `agentobs.metrics` — `aggregate()`, `MetricsSummary`, `LatencyStats` |
+| [store](api/store.md) | `agentobs._store` — `TraceStore` and MCP trace access functions |
+| [hooks](api/hooks.md) | `agentobs._hooks` — `HookRegistry`, `hooks` singleton |
 | [ulid](api/ulid.md) | `agentobs.ulid` — ULID generation and helpers |
 | [exceptions](api/exceptions.md) | `agentobs.exceptions` — Exception hierarchy |
 | [models](api/models.md) | `agentobs.models` — Pydantic v2 model layer |

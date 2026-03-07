@@ -15,6 +15,7 @@
   <a href="https://www.getspanforge.com/standard"><img src="https://img.shields.io/badge/standard-AGENTOBS_RFC--0001-4c8cbf" alt="AGENTOBS RFC-0001"/></a>
   <img src="https://img.shields.io/badge/coverage-97%25-brightgreen" alt="97% test coverage"/>
   <img src="https://img.shields.io/badge/tests-2407%20passing-brightgreen" alt="2407 tests"/>
+  <img src="https://img.shields.io/badge/version-2.0.0-4c8cbf" alt="Version 2.0.0"/>
   <img src="https://img.shields.io/badge/dependencies-zero-brightgreen" alt="Zero dependencies"/>
   <a href="docs/index.md"><img src="https://img.shields.io/badge/docs-local-4c8cbf" alt="Documentation"/></a>
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"/>
@@ -73,6 +74,7 @@ pip install "agentobs[otel]"         # OpenTelemetry SDK integration
 pip install "agentobs[kafka]"        # EventStream.from_kafka() via kafka-python
 pip install "agentobs[langchain]"    # LangChain callback handler
 pip install "agentobs[llamaindex]"   # LlamaIndex event handler
+pip install "agentobs[crewai]"       # CrewAI callback handler
 pip install "agentobs[datadog]"      # Datadog APM + metrics exporter
 pip install "agentobs[all]"          # everything above
 ```
@@ -96,6 +98,45 @@ with agentobs.span("call-llm") as span:
 ```
 
 The context manager automatically records start/end times, parent-child span relationships, and emits a structured event when it exits.
+
+---
+
+### 1c — Use the high-level `Trace` API (new in 2.0)
+
+```python
+import agentobs
+
+agentobs.configure(exporter="console", service_name="my-agent")
+
+with agentobs.start_trace("research-agent") as trace:
+    with trace.llm_call("gpt-4o", temperature=0.7) as span:
+        result = call_llm(prompt)
+        span.set_token_usage(input=512, output=200, total=712)
+        span.set_status("ok")
+        span.add_event("tool_selected", {"name": "web_search"})
+
+    with trace.tool_call("web_search") as span:
+        output = run_search(query)
+        span.set_status("ok")
+
+# Inspect the trace in the terminal
+trace.print_tree()
+# ─ Agent Run: research-agent  [1.2s]
+#  ├─ LLM Call: gpt-4o  [0.8s]  in=512 out=200 tokens  $0.0034
+#  └─ Tool Call: web_search  [0.4s]  ok
+
+print(trace.summary())
+# {'trace_id': '...', 'agent_name': 'research-agent', 'span_count': 3, ...}
+```
+
+The `Trace` object works with `async with` too:
+
+```python
+async with agentobs.start_trace("async-agent") as trace:
+    async with trace.llm_call("gpt-4o") as span:
+        response = await async_call_llm(prompt)
+        span.set_status("ok")
+```
 
 ---
 
@@ -280,10 +321,56 @@ console.export(event)
 
 ---
 
-### 7 — Check compliance and inspect events from the command line
+### 7b — Register lifecycle hooks (new in 2.0)
+
+```python
+import agentobs
+
+@agentobs.hooks.on_llm_call
+def log_llm(span):
+    print(f"LLM called: {span.model}  temp={span.temperature}")
+
+@agentobs.hooks.on_tool_call
+def log_tool(span):
+    print(f"Tool called: {span.name}")
+
+# Hooks fire automatically for every span of the matching type
+```
+
+---
+
+### 7c — Aggregate metrics from a trace file (new in 2.0)
+
+```python
+import agentobs
+from agentobs.stream import EventStream
+
+events = list(EventStream.from_file("events.jsonl"))
+summary = agentobs.metrics.aggregate(events)
+
+print(f"Traces:  {summary.trace_count}")
+print(f"Success: {summary.agent_success_rate:.0%}")
+print(f"p95 LLM: {summary.llm_latency_ms.p95:.0f} ms")
+print(f"Cost:    ${summary.total_cost_usd:.4f}")
+```
+
+---
+
+### 7d — Visualize a Gantt timeline (new in 2.0)
+
+```python
+from agentobs.debug import visualize
+
+html = visualize(trace.spans, path="trace.html")
+# Opens trace.html in a browser — self-contained, no external deps
+```
+
+---
+
+### 8 — Check compliance and inspect events from the command line
 
 ```bash
-agentobs check-compat events.json        # v1.0 compatibility checklist
+agentobs check-compat events.json        # v2.0 compatibility checklist
 agentobs validate events.jsonl           # JSON Schema validation per event
 agentobs audit-chain events.jsonl        # verify HMAC signing chain integrity
 agentobs inspect <EVENT_ID> events.jsonl # pretty-print a single event
@@ -329,8 +416,33 @@ Drop any of these into your CI pipeline to catch schema drift, signing failures,
 </tr>
 <tr>
   <td><code>agentobs._span</code></td>
-  <td>Span, AgentRun, AgentStep context managers — the runtime tracing API</td>
+  <td>Span, AgentRun, AgentStep context managers — the runtime tracing API. Uses <code>contextvars</code> for safe async/thread context propagation. Supports <code>async with</code>, <code>span.add_event()</code>, <code>span.set_timeout_deadline()</code></td>
   <td>App developers</td>
+</tr>
+<tr>
+  <td><code>agentobs._trace</code></td>
+  <td><code>Trace</code> object and <code>start_trace()</code> — high-level, imperative tracing entry point; accumulates all child spans</td>
+  <td>App developers</td>
+</tr>
+<tr>
+  <td><code>agentobs.debug</code></td>
+  <td><code>print_tree()</code>, <code>summary()</code>, <code>visualize()</code> — terminal tree, stats dict, and self-contained HTML Gantt timeline</td>
+  <td>App developers</td>
+</tr>
+<tr>
+  <td><code>agentobs.metrics</code></td>
+  <td><code>aggregate()</code> and <code>MetricsSummary</code> — compute success rates, latency percentiles, token totals, and cost breakdowns from any <code>Iterable[Event]</code></td>
+  <td>Data / analytics engineers</td>
+</tr>
+<tr>
+  <td><code>agentobs._store</code></td>
+  <td><code>TraceStore</code> — in-memory ring buffer; <code>get_trace()</code>, <code>list_tool_calls()</code>, <code>list_llm_calls()</code></td>
+  <td>Platform / tooling engineers</td>
+</tr>
+<tr>
+  <td><code>agentobs._hooks</code></td>
+  <td><code>HookRegistry</code> / <code>hooks</code> — global span lifecycle hooks: <code>@hooks.on_llm_call</code>, <code>@hooks.on_tool_call</code>, <code>@hooks.on_agent_start</code>, <code>@hooks.on_agent_end</code></td>
+  <td>App developers / platform</td>
 </tr>
 <tr>
   <td><code>agentobs._cli</code></td>
@@ -389,7 +501,7 @@ Drop any of these into your CI pipeline to catch schema drift, signing failures,
 </tr>
 <tr>
   <td><code>agentobs.integrations</code></td>
-  <td>Plug-in adapters for OpenAI (auto-instrumentation via <code>patch()</code>), LangChain, LlamaIndex, Anthropic, Groq, Ollama, and Together. <code>agentobs.integrations._pricing</code> ships a static USD/1M-token pricing table for all current OpenAI models.</td>
+  <td>Plug-in adapters for OpenAI (auto-instrumentation via <code>patch()</code>), LangChain, LlamaIndex, Anthropic, Groq, Ollama, Together, and <strong>CrewAI</strong> (<code>AgentOBSCrewAIHandler</code> + <code>patch()</code>). <code>agentobs.integrations._pricing</code> ships a static USD/1M-token pricing table for all current OpenAI models.</td>
   <td>App developers</td>
 </tr>
 <tr>
@@ -453,6 +565,8 @@ event = Event(
 - **Zero required dependencies** — the entire core runs on Python's standard library alone
 - **Typed** — full ``py.typed`` marker; works with mypy and pyright out of the box
 - **Frozen v2 trace schema** — ``llm.trace.*`` payload fields will never break between minor releases
+- **async-safe context propagation** — `contextvars`-based span stacks work correctly across `asyncio` tasks, thread pools, and executors
+- **Version 2.0.0** adds: `Trace` / `start_trace()`, `async with`, `span.add_event()`, `print_tree()` / `summary()` / `visualize()`, sampling controls, `metrics.aggregate()`, `TraceStore`, `HookRegistry`, CrewAI integration
 
 ---
 
@@ -462,12 +576,21 @@ event = Event(
 agentobs/
 ├── __init__.py       <- Public API surface (start here)
 ├── event.py          <- The Event envelope
-├── types.py          <- EventType enum
+├── types.py          <- EventType enum  (+ SpanErrorCategory)
 ├── config.py         <- configure() / get_config() / AgentOBSConfig
+│                        (sample_rate, always_sample_errors, include_raw_tool_io,
+│                         enable_trace_store, trace_store_size)
 ├── _span.py          <- Span, AgentRun, AgentStep context managers
+│                        (contextvars stacks, async with, add_event,
+│                         record_error, set_timeout_deadline)
+├── _trace.py         <- Trace class + start_trace()          [NEW in 2.0]
 ├── _tracer.py        <- Tracer — top-level tracing entry point
-├── _stream.py        <- Internal dispatch: redact → sign → export
+├── _stream.py        <- Internal dispatch: sample → redact → sign → export
+├── _store.py         <- TraceStore ring buffer                [NEW in 2.0]
+├── _hooks.py         <- HookRegistry singleton (hooks)        [NEW in 2.0]
 ├── _cli.py           <- CLI entry-point (8 sub-commands)
+├── debug.py          <- print_tree, summary, visualize        [NEW in 2.0]
+├── metrics.py        <- aggregate(), MetricsSummary, etc.     [NEW in 2.0]
 ├── signing.py        <- HMAC signing & audit chains
 ├── redact.py         <- PII redaction
 ├── validate.py       <- JSON Schema validation
@@ -489,9 +612,11 @@ agentobs/
 │   ├── langchain.py  <- LangChain callback handler
 │   ├── llamaindex.py <- LlamaIndex event handler
 │   ├── openai.py     <- OpenAI tracing wrapper
+│   ├── crewai.py     <- CrewAI handler + patch()              [NEW in 2.0]
 │   └── ...           (anthropic, groq, ollama, together)
 ├── namespaces/       <- Typed payload dataclasses
-│   ├── trace.py        (SpanPayload, AgentRunPayload, AgentStepPayload — frozen v2)
+│   ├── trace.py        (SpanPayload + temperature/top_p/max_tokens/error_category,
+│   │                    SpanEvent, ToolCall + arguments_raw/result_raw/retry_count)
 │   ├── cost.py
 │   ├── cache.py
 │   └── ...

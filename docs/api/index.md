@@ -18,6 +18,11 @@ exported at the top-level package under `agentobs`.
 - [governance](governance.md)
 - [deprecations](deprecations.md)
 - [integrations](integrations.md)
+- [trace](trace.md)
+- [debug](debug.md)
+- [metrics](metrics.md)
+- [store](store.md)
+- [hooks](hooks.md)
 - [ulid](ulid.md)
 - [exceptions](exceptions.md)
 - [models](models.md)
@@ -27,7 +32,7 @@ exported at the top-level package under `agentobs`.
 | Module | Responsibility |
 |--------|---------------|
 | `agentobs.event` | `Event` envelope and serialisation |
-| `agentobs.types` | `EventType` enum, custom type validation |
+| `agentobs.types` | `EventType` enum, `SpanErrorCategory`, custom type validation |
 | `agentobs.signing` | HMAC signing, `AuditStream`, chain verification |
 | `agentobs.redact` | `Redactable`, `RedactionPolicy`, PII helpers |
 | `agentobs.compliance` | Compatibility checks, isolation, chain integrity, scope verification |
@@ -38,7 +43,12 @@ exported at the top-level package under `agentobs`.
 | `agentobs.consumer` | `ConsumerRegistry`, `ConsumerRecord`, `IncompatibleSchemaError` |
 | `agentobs.governance` | `EventGovernancePolicy`, `GovernanceViolationError`, `GovernanceWarning` |
 | `agentobs.deprecations` | `DeprecationRegistry`, `DeprecationNotice`, `warn_if_deprecated()` |
-| `agentobs.integrations` | `LLMSchemaCallbackHandler` (LangChain), `LLMSchemaEventHandler` (LlamaIndex) |
+| `agentobs.integrations` | `LLMSchemaCallbackHandler` (LangChain), `LLMSchemaEventHandler` (LlamaIndex), `AgentOBSCrewAIHandler` (CrewAI), OpenAI `patch()` |
+| `agentobs._trace` | `Trace` dataclass and `start_trace()` high-level entry point |
+| `agentobs.debug` | `print_tree()`, `summary()`, `visualize()` debug utilities |
+| `agentobs.metrics` | `aggregate()`, `MetricsSummary`, `LatencyStats`, per-metric helpers |
+| `agentobs._store` | `TraceStore` ring buffer; `get_trace()`, `list_tool_calls()`, `list_llm_calls()` |
+| `agentobs._hooks` | `HookRegistry`, `hooks` singleton, span lifecycle callbacks |
 | `agentobs.ulid` | ULID generation and helpers |
 | `agentobs.exceptions` | Package-level exception hierarchy |
 | `agentobs.models` | Shared Pydantic base models |

@@ -327,7 +327,7 @@ from agentobs.ulid import generate as generate_ulid
 from agentobs.ulid import validate as validate_ulid
 from agentobs.validate import validate_event
 
-__version__: str = "1.0.6"
+__version__: str = "2.0.0"
 
 __all__: list[str] = [
     "PII_TYPES",

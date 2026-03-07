@@ -27,6 +27,7 @@ pip install agentobs
 | `kafka` | `pip install "agentobs[kafka]"` | `EventStream.from_kafka()` via `kafka-python>=2.0` |
 | `langchain` | `pip install "agentobs[langchain]"` | `LLMSchemaCallbackHandler` via `langchain-core>=0.2` |
 | `llamaindex` | `pip install "agentobs[llamaindex]"` | `LLMSchemaEventHandler` via `llama-index-core>=0.10` |
+| `crewai` | `pip install "agentobs[crewai]"` | `AgentOBSCrewAIHandler` and `patch()` via `crewai>=0.28` |
 | `datadog` | `pip install "agentobs[datadog]"` | `DatadogExporter` (stdlib transport; reserved for future `ddtrace` integration) |
 | `all` | `pip install "agentobs[all]"` | All optional extras |
 
@@ -54,7 +55,7 @@ all optional extras.
 
 ```python
 import agentobs  # pip install agentobs  →  import agentobs
-print(agentobs.__version__)   # 1.0.6
+print(agentobs.__version__)   # 2.0.0
 print(agentobs.SCHEMA_VERSION)  # 2.0
 
 from agentobs import Event, EventType

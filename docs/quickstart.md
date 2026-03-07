@@ -163,9 +163,82 @@ asyncio.run(exporter.export_batch(events))
 
 See [user_guide/export.md](user_guide/export.md) for OTLP, webhook, and `OTelBridgeExporter` (TracerProvider integration).
 
+---
+
+## Trace API (new in 2.0)
+
+`start_trace()` gives you a first-class `Trace` object that tracks all spans
+inside a single agent run. It works with both `with` and `async with`:
+
+```python
+import agentobs
+
+agentobs.configure(exporter="console", service_name="my-agent")
+
+with agentobs.start_trace("research-agent") as trace:
+    with trace.llm_call("gpt-4o", temperature=0.7) as span:
+        result = call_llm(prompt)
+        span.set_token_usage(input=512, output=200, total=712)
+        span.set_status("ok")
+        span.add_event("reasoning_complete", {"steps": 3})
+
+    with trace.tool_call("web_search") as span:
+        output = run_search("latest AI news")
+        span.set_status("ok")
+
+# Pretty-print the span tree
+trace.print_tree()
+# — Agent Run: research-agent  [1.2s]
+#  ├─ LLM Call: gpt-4o  [0.8s]  in=512 out=200 tokens  $0.0034
+#  └─ Tool Call: web_search  [0.4s]  ok
+
+# Summary statistics
+print(trace.summary())
+# {'trace_id': '...', 'agent_name': 'research-agent', 'span_count': 3,
+#  'llm_calls': 1, 'tool_calls': 1, 'total_cost_usd': 0.0034, 'errors': 0}
+```
+
+---
+
+## Lifecycle hooks (new in 2.0)
+
+Register callbacks that fire on every span of a given type, globally:
+
+```python
+import agentobs
+
+@agentobs.hooks.on_llm_call
+def log_llm(span):
+    print(f"LLM: {span.model}  temp={span.temperature}")
+
+@agentobs.hooks.on_tool_call
+def log_tool(span):
+    print(f"Tool: {span.name}")
+```
+
+---
+
+## Aggregating metrics (new in 2.0)
+
+```python
+import agentobs
+from agentobs.stream import EventStream
+
+events = list(EventStream.from_file("events.jsonl"))
+m = agentobs.metrics.aggregate(events)
+
+print(f"Success rate : {m.agent_success_rate:.0%}")
+print(f"p95 LLM      : {m.llm_latency_ms.p95:.0f} ms")
+print(f"Total cost   : ${m.total_cost_usd:.4f}")
+print(f"By model     : {m.cost_by_model}")
+```
+
 ## Next steps
 
 - [User Guide](user_guide/index.md) — in-depth guide to all features
+- [Tracing API](user_guide/tracing.md) — `Trace`, `start_trace()`, async spans, `add_event()`
+- [Debugging & Visualization](user_guide/debugging.md) — `print_tree()`, `summary()`, `visualize()`
+- [Metrics & Analytics](user_guide/metrics.md) — `metrics.aggregate()`, `TraceStore`
 - [API Reference](api/index.md) — full API reference
 - [Namespace Payload Catalogue](namespaces/index.md) — typed payload catalogue
 - [CLI](cli.md) — `agentobs check-compat` command

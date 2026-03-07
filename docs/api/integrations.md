@@ -362,4 +362,51 @@ Handler = integrations.LLMSchemaCallbackHandler
 
 # LlamaIndex
 Handler = integrations.LLMSchemaEventHandler
+
+# CrewAI
+integrations.crewai.patch()
+Handler = integrations.crewai.AgentOBSCrewAIHandler
 ```
+
+---
+
+## `agentobs.integrations.crewai` — CrewAI
+
+See [docs/integrations/crewai.md](../integrations/crewai.md) for the full
+integration guide.
+
+### Installation
+
+```bash
+pip install "agentobs[crewai]"
+```
+
+### `AgentOBSCrewAIHandler`
+
+```python
+class AgentOBSCrewAIHandler:
+    ...
+```
+
+CrewAI callback handler that emits `llm.trace.*` events for agent actions,
+task lifecycle, and tool calls.  Follow the same pattern as
+`LLMSchemaCallbackHandler`:
+
+```python
+from agentobs.integrations.crewai import AgentOBSCrewAIHandler
+from crewai import Crew
+
+handler = AgentOBSCrewAIHandler()
+crew = Crew(agents=[...], tasks=[...], callbacks=[handler])
+crew.kickoff()
+```
+
+### `patch()`
+
+```python
+def patch() -> None
+```
+
+Register `AgentOBSCrewAIHandler` globally into CrewAI's callback system.
+Guards with `importlib.util.find_spec("crewai")` so the module imports
+cleanly when CrewAI is not installed.
