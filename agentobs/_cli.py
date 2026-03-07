@@ -10,6 +10,10 @@ Entry-point (configured in pyproject.toml)::
 
 Sub-commands
 ------------
+``agentobs check``
+    End-to-end health check: validates configuration, emits a test event,
+    and confirms the export pipeline is working.  Exits 0 on success.
+
 ``agentobs check-compat <events.json>``
     Load a JSON file containing a list of serialised events and run the
     v1.0 compatibility checklist.  Exits 0 on success, 1 on violations,
@@ -52,6 +56,94 @@ import json
 import sys
 from pathlib import Path
 from typing import NoReturn
+
+
+def _cmd_check(_args: argparse.Namespace) -> int:
+    """Implement the ``check`` sub-command — end-to-end health check."""
+    import traceback  # noqa: PLC0415
+
+    print("agentobs health check")
+    print("=" * 40)
+    ok = True
+
+    # Step 1: Config
+    try:
+        from agentobs.config import get_config  # noqa: PLC0415
+        cfg = get_config()
+        print(f"[✓] Config loaded  exporter={cfg.exporter!r}  env={cfg.env!r}  "
+              f"service={cfg.service_name!r}")
+    except Exception as exc:
+        print(f"[✗] Config failed: {exc}", file=sys.stderr)
+        return 1
+
+    # Step 2: Event creation
+    try:
+        from agentobs.event import Event  # noqa: PLC0415
+        from agentobs.ulid import generate as gen_ulid  # noqa: PLC0415
+        event = Event(
+            event_type="llm.trace.span.completed",
+            source=f"{cfg.service_name}@0.0.0",
+            payload={
+                "span_id": "0" * 16,
+                "trace_id": "0" * 32,
+                "span_name": "agentobs.health.check",
+                "operation": "chat",
+                "span_kind": "client",
+                "status": "ok",
+                "start_time_unix_nano": 0,
+                "end_time_unix_nano": 1_000_000,
+                "duration_ms": 1.0,
+            },
+            event_id=gen_ulid(),
+        )
+        print("[✓] Test event created")
+    except Exception as exc:
+        print(f"[✗] Event creation failed: {exc}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        return 1
+
+    # Step 3: Schema validation
+    try:
+        from agentobs.validate import validate_event  # noqa: PLC0415
+        validate_event(event)
+        print("[✓] Schema validation passed")
+    except Exception as exc:
+        print(f"[✗] Schema validation failed: {exc}", file=sys.stderr)
+        ok = False
+
+    # Step 4: Export pipeline
+    try:
+        from agentobs._stream import _dispatch  # noqa: PLC0415
+        _dispatch(event)
+        print("[✓] Export pipeline: event dispatched successfully")
+    except Exception as exc:
+        print(f"[✗] Export pipeline failed: {exc}", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
+        ok = False
+
+    # Step 5: TraceStore recording (only if enabled)
+    if cfg.enable_trace_store:
+        try:
+            from agentobs._store import get_store  # noqa: PLC0415
+            store = get_store()
+            events = store.get_trace("0" * 32)
+            if events is not None and len(events) >= 1:
+                print(f"[✓] TraceStore recorded {len(events)} event(s)")
+            else:
+                print("[✗] TraceStore: event not found after dispatch", file=sys.stderr)
+                ok = False
+        except Exception as exc:
+            print(f"[✗] TraceStore check failed: {exc}", file=sys.stderr)
+            ok = False
+    else:
+        print("[–] TraceStore: disabled (set AGENTOBS_ENABLE_TRACE_STORE=1 to enable)")
+
+    print("=" * 40)
+    if ok:
+        print("PASS — all checks passed.")
+        return 0
+    print("FAIL — one or more checks failed.", file=sys.stderr)
+    return 1
 
 
 def _cmd_check_compat(args: argparse.Namespace) -> int:
@@ -374,6 +466,12 @@ def main(argv: list[str] | None = None) -> NoReturn:
     )
     sub = parser.add_subparsers(dest="command", metavar="<command>")
 
+    # check sub-command (health check)
+    sub.add_parser(
+        "check",
+        help="End-to-end health check: validates config, emits a test event, confirms export pipeline",
+    )
+
     # check-compat sub-command
     compat_parser = sub.add_parser(
         "check-compat",
@@ -460,7 +558,9 @@ def main(argv: list[str] | None = None) -> NoReturn:
 
     args = parser.parse_args(argv)
 
-    if args.command == "check-compat":
+    if args.command == "check":
+        sys.exit(_cmd_check(args))
+    elif args.command == "check-compat":
         sys.exit(_cmd_check_compat(args))
     elif args.command == "list-deprecated":
         sys.exit(_cmd_list_deprecated(args))

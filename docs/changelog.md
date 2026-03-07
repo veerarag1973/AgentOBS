@@ -6,7 +6,72 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
-## 2.0.0 (current) — 2026-03-07
+## 1.0.6 — 2026-03-07
+
+**Architect Review — Developer Experience & Reliability Improvements**
+
+All changes are backward-compatible; no existing public API was removed.
+
+### Added
+
+- **`agentobs/testing.py`** — first-class test utilities: `MockExporter`,
+  `capture_events()` context manager, `assert_event_schema_valid()`, and
+  `trace_store()` isolated store context manager.  Write unit tests for your
+  AI pipeline without real exporters.
+- **`agentobs/auto.py`** \u2014 integration auto-discovery.  Call
+  `agentobs.auto.setup()` to auto-patch every installed LLM integration
+  (OpenAI, Anthropic, Ollama, Groq, Together AI).  `setup()` must be called
+  explicitly \u2014 `import agentobs.auto` alone does not patch anything.
+  `agentobs.auto.teardown()` cleanly unpatches all.
+- **Async hooks** (`agentobs._hooks`) — `AsyncHookFn` type alias and four new
+  async registration methods on `HookRegistry`: `on_agent_start_async()`,
+  `on_agent_end_async()`, `on_llm_call_async()`, `on_tool_call_async()`.
+  Async hooks are fired via `asyncio.ensure_future()` on the running loop;
+  silently skipped when no loop is running.
+- **`agentobs check` CLI** — new `agentobs check` sub-command performs a
+  five-step end-to-end health check (config → event creation → schema
+  validation → export pipeline → trace store) and exits 0/1.
+- **`trace_store()` context manager** (`agentobs.trace_store`) — installs a
+  fresh, isolated `TraceStore` for the duration of a `with` block and restores
+  the previous singleton on exit.  Exported at package level.
+- **Export retry with back-off** (`agentobs._stream`) — the dispatch pipeline
+  now retries failed exports up to `export_max_retries` times (default: 3)
+  with exponential back-off (0.5 s, 1 s, 2 s …).  Configurable via
+  `agentobs.configure(export_max_retries=N)`.
+- **Structured export logging** — `logging.getLogger("agentobs.export")` now
+  emits `WARNING`-level messages on every export error and `DEBUG`-level
+  messages on each retry attempt.
+- **Export error counter** — `agentobs._stream.get_export_error_count()`
+  returns the cumulative count of export errors since process start; useful
+  for health-check endpoints.
+- **`unpatch()` / `is_patched()`** for all three callback-based integrations
+  (`crewai`, `langchain`, `llamaindex`) — consistent unpatch API across every
+  integration module.
+- **`NotImplementedWarning`** (`agentobs.migrate`) — `v1_to_v2()` now emits a
+  `NotImplementedWarning` via `warnings.warn()` before raising
+  `NotImplementedError` so tools that filter warnings still see the signal.
+  `v1_to_v2` is removed from `agentobs.__all__`.
+- **`assert_no_sunset_reached()`** (`agentobs.assert_no_sunset_reached`) — CI
+  helper that raises `AssertionError` listing any `SunsetPolicy` records whose
+  `sunset` version is ≤ the current SDK version.
+- **Frozen payload dataclasses** — `SpanPayload`, `AgentStepPayload`, and
+  `AgentRunPayload` are now `@dataclass(frozen=True)`; attempts to mutate a
+  completed span record now raise `FrozenInstanceError` immediately.
+- **Custom exporter tutorial** — new doc at
+  `docs/user_guide/custom_exporters.md` covering the `SyncExporter` protocol,
+  HTTP + batching examples, error handling, and test patterns.
+
+### Changed
+
+- `agentobs.__version__` bumped from `"1.0.5"` to `"1.0.6"`.
+- `HookRegistry.__repr__` now includes both sync and async hook counts.
+- `agentobs.__all__` updated: added `AsyncHookFn`, `assert_no_sunset_reached`,
+  `NotImplementedWarning`, `trace_store`, `testing`, `auto`; removed
+  `v1_to_v2`.
+
+---
+
+## 2.0.0 (previous) — 2026-03-07
 
 **Phases 1–5 — Core Foundation, Observability, Developer Experience, Production Analytics, Ecosystem Expansion**
 

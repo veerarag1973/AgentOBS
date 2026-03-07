@@ -20,16 +20,25 @@ config changes (call :func:`_reset_exporter` after ``configure()``).
 
 from __future__ import annotations
 
+import logging
 import random
 import re
 import threading
+import time
 import warnings
 
 from agentobs.config import AgentOBSConfig, get_config
 from agentobs.event import Event, Tags
+from agentobs.exceptions import ExportError
 from agentobs.types import EventType
 
 __all__: list[str] = []  # internal — not re-exported from agentobs root
+
+_export_logger = logging.getLogger("agentobs.export")
+
+# Thread-safe export error counter (useful for metrics / health checks).
+_export_error_count: int = 0
+_export_error_lock = threading.Lock()
 
 # ---------------------------------------------------------------------------
 # Source field sanitisation
@@ -78,6 +87,16 @@ def _handle_export_error(exc: Exception) -> None:
     - ``"warn"``  — emit a :mod:`warnings` ``UserWarning`` (default).
     - ``"raise"`` — re-raise the exception into caller code.
     """
+    global _export_error_count  # noqa: PLW0603
+    with _export_error_lock:
+        _export_error_count += 1
+
+    _export_logger.warning(
+        "agentobs export error (%s): %s",
+        type(exc).__name__,
+        exc,
+    )
+
     try:
         policy = get_config().on_export_error
     except Exception:
@@ -141,6 +160,19 @@ def _build_exporter() -> object:
     if name == "console":
         from agentobs.exporters.console import SyncConsoleExporter  # noqa: PLC0415
         return SyncConsoleExporter()
+
+    # Named exporters that are only supported via EventStream (async path).
+    # Warn the user so they know to switch to EventStream instead of silently
+    # receiving console output.
+    _supported_via_eventstream = frozenset({"otlp", "webhook", "datadog", "grafana_loki"})
+    if name in _supported_via_eventstream:
+        warnings.warn(
+            f"agentobs: exporter={name!r} is not supported by the synchronous tracer "
+            f"(configure / start_trace).  Use agentobs.stream.EventStream with the "
+            f"agentobs.export.{name} module instead.  Falling back to console output.",
+            UserWarning,
+            stacklevel=4,
+        )
 
     # Default fallback: use the console exporter.
     from agentobs.exporters.console import SyncConsoleExporter  # noqa: PLC0415
@@ -363,9 +395,25 @@ def _dispatch(event: Event) -> None:
                 )
                 _prev_signed_event = event
 
-        # 3. Export.
+        # 3. Export (with retry + exponential backoff on transient ExportError only).
         exporter = _active_exporter()
-        exporter.export(event)  # type: ignore[attr-defined]
+        max_retries: int = cfg.export_max_retries
+        for attempt in range(max_retries + 1):
+            try:
+                exporter.export(event)  # type: ignore[attr-defined]
+                break
+            except ExportError as exc:
+                if attempt < max_retries:
+                    _export_logger.debug(
+                        "agentobs export attempt %d/%d failed (%s): %s — retrying",
+                        attempt + 1,
+                        max_retries + 1,
+                        type(exc).__name__,
+                        exc,
+                    )
+                    time.sleep(0.5 * (2 ** attempt))  # 0.5 s, 1 s, 2 s …
+                else:
+                    raise  # exhausted — let outer except call _handle_export_error once
 
         # 4. Trace store (opt-in ring buffer for programmatic querying).
         if cfg.enable_trace_store:
@@ -376,3 +424,15 @@ def _dispatch(event: Event) -> None:
                 _handle_export_error(exc)
     except Exception as exc:
         _handle_export_error(exc)
+
+
+def get_export_error_count() -> int:
+    """Return the total number of export errors recorded since process start.
+
+    Useful for health checks and instrumentation::
+
+        from agentobs._stream import get_export_error_count
+        assert get_export_error_count() == 0, "export errors detected"
+    """
+    with _export_error_lock:
+        return _export_error_count

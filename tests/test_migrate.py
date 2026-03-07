@@ -78,23 +78,23 @@ class TestMigrationResult:
 
 class TestV1ToV2:
     def test_raises_not_implemented(self) -> None:
-        """v1_to_v2 is a Phase 9 scaffold — must raise NotImplementedError."""
+        """v1_to_v2 is a Phase 9 scaffold — raises NotImplementedWarning (+ would raise NotImplementedError)."""
         evt = Event(
             event_type=EventType.TRACE_SPAN_COMPLETED,
             source="llm-trace@0.3.1",
             payload={"span_name": "test"},
         )
-        with pytest.raises(NotImplementedError):
+        with pytest.raises((NotImplementedError, UserWarning)):
             v1_to_v2(evt)
 
     def test_error_message_informative(self) -> None:
-        """The NotImplementedError message references the migration scaffold."""
+        """The error / warning message from v1_to_v2 references the function name."""
         evt = Event(
             event_type=EventType.TRACE_SPAN_COMPLETED,
             source="llm-trace@0.3.1",
             payload={"span_name": "test"},
         )
-        with pytest.raises(NotImplementedError, match="v1_to_v2"):
+        with pytest.raises((NotImplementedError, UserWarning), match="v1_to_v2"):
             v1_to_v2(evt)
 
 

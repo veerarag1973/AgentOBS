@@ -26,13 +26,14 @@ from __future__ import annotations
 
 import threading
 from collections import OrderedDict
-from typing import TYPE_CHECKING
+from contextlib import contextmanager
+from typing import TYPE_CHECKING, Generator
 
 if TYPE_CHECKING:
     from agentobs.event import Event
     from agentobs.namespaces.trace import SpanPayload
 
-__all__ = ["TraceStore", "get_store"]
+__all__ = ["TraceStore", "get_store", "trace_store"]
 
 # ---------------------------------------------------------------------------
 # EventType string constants (avoid circular import)
@@ -253,3 +254,34 @@ def list_tool_calls(trace_id: str) -> list["SpanPayload"]:
 def list_llm_calls(trace_id: str) -> list["SpanPayload"]:
     """Return LLM-call spans for *trace_id*.  See :meth:`TraceStore.list_llm_calls`."""
     return get_store().list_llm_calls(trace_id)
+
+
+@contextmanager
+def trace_store(max_traces: int = 100) -> Generator[TraceStore, None, None]:
+    """Context manager that installs a fresh, isolated :class:`TraceStore` for the duration of the block.
+
+    Useful in tests and interactive sessions where you want a clean store
+    without affecting the global singleton::
+
+        with agentobs.trace_store() as store:
+            # run code that emits events ...
+            events = store.get_trace(my_trace_id)
+
+    The previous global store is restored automatically on exit, even if an
+    exception is raised.
+
+    Args:
+        max_traces: Ring-buffer size for the temporary store.  Default: 100.
+
+    Yields:
+        A fresh :class:`TraceStore` instance that is installed as the global
+        singleton for the duration of the block.
+    """
+    global _store  # noqa: PLW0603
+    previous = _store
+    fresh = TraceStore(max_traces=max_traces)
+    _store = fresh
+    try:
+        yield fresh
+    finally:
+        _store = previous

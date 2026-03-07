@@ -15,7 +15,7 @@
   <a href="https://www.getspanforge.com/standard"><img src="https://img.shields.io/badge/standard-AGENTOBS_RFC--0001-4c8cbf" alt="AGENTOBS RFC-0001"/></a>
   <img src="https://img.shields.io/badge/coverage-97%25-brightgreen" alt="97% test coverage"/>
   <img src="https://img.shields.io/badge/tests-2407%20passing-brightgreen" alt="2407 tests"/>
-  <img src="https://img.shields.io/badge/version-2.0.0-4c8cbf" alt="Version 2.0.0"/>
+  <img src="https://img.shields.io/badge/version-1.0.6-4c8cbf" alt="Version 1.0.6"/>
   <img src="https://img.shields.io/badge/dependencies-zero-brightgreen" alt="Zero dependencies"/>
   <a href="docs/index.md"><img src="https://img.shields.io/badge/docs-local-4c8cbf" alt="Documentation"/></a>
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"/>

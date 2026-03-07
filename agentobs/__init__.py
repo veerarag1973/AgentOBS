@@ -154,12 +154,13 @@ from agentobs._store import (
     get_trace,
     list_llm_calls,
     list_tool_calls,
+    trace_store,
 )
 
 # ---------------------------------------------------------------------------
 # Phase 5: Hook registry
 # ---------------------------------------------------------------------------
-from agentobs._hooks import HookRegistry, hooks
+from agentobs._hooks import AsyncHookFn, HookRegistry, hooks
 
 # ---------------------------------------------------------------------------
 # Phase 2: Core tracer + span
@@ -224,8 +225,9 @@ from agentobs.governance import (
 from agentobs.migrate import (
     DeprecationRecord,
     MigrationResult,
+    NotImplementedWarning,
     SunsetPolicy,
-    v1_to_v2,
+    assert_no_sunset_reached,
     v2_migration_roadmap,
 )
 
@@ -327,7 +329,11 @@ from agentobs.ulid import generate as generate_ulid
 from agentobs.ulid import validate as validate_ulid
 from agentobs.validate import validate_event
 
-__version__: str = "2.0.0"
+__version__: str = "1.0.6"
+
+# Optional sub-modules — import on demand to keep startup cost zero.
+import agentobs.testing as testing  # noqa: E402
+import agentobs.auto as auto  # noqa: E402
 
 __all__: list[str] = [
     "PII_TYPES",
@@ -402,6 +408,8 @@ __all__: list[str] = [
     "LLMSchemaError",
     # Migration scaffold (v1→v2)
     "MigrationResult",
+    "NotImplementedWarning",
+    "assert_no_sunset_reached",
     "ModelInfo",
     # Export backends (RFC Â§14)
     "OTLPExporter",
@@ -457,7 +465,9 @@ __all__: list[str] = [
     "get_last_agent_run",
     "list_tool_calls",
     "list_llm_calls",
+    "trace_store",
     # Phase 5 — Hooks
+    "AsyncHookFn",
     "HookRegistry",
     "hooks",
     # Phase 1 — Configuration
@@ -467,6 +477,8 @@ __all__: list[str] = [
     "WebhookExporter",
     # Metadata
     "__version__",
+    "testing",
+    "auto",
     "aiter_file",
     "assert_compatible",
     "assert_redacted",
@@ -496,7 +508,6 @@ __all__: list[str] = [
     "sign",
     "start_trace",
     "tracer",
-    "v1_to_v2",
     "v2_migration_roadmap",
     "validate_custom",
     # Validation

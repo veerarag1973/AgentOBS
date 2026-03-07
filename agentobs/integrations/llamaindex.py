@@ -27,6 +27,8 @@ from agentobs.ulid import generate as gen_ulid
 
 __all__ = [
     "LLMSchemaEventHandler",
+    "is_patched",
+    "unpatch",
 ]
 
 # ---------------------------------------------------------------------------
@@ -327,3 +329,35 @@ class LLMSchemaEventHandler:
             f"source={self._source!r}, "
             f"events={len(self.events)})"
         )
+
+
+# ---------------------------------------------------------------------------
+# Module-level patch / unpatch API (for API consistency with other integrations)
+# ---------------------------------------------------------------------------
+
+def is_patched() -> bool:
+    """Return ``True`` if the LlamaIndex integration module is importable.
+
+    LlamaIndex uses a callback-handler pattern rather than monkey-patching, so
+    there is no global state to check.  This function simply verifies that the
+    LlamaIndex package is available.
+
+    Returns:
+        ``True`` when LlamaIndex is installed and the handler can be created.
+    """
+    try:
+        _require_llamaindex()
+        return True
+    except ImportError:
+        return False
+
+
+def unpatch() -> None:
+    """No-op for the LlamaIndex integration.
+
+    LlamaIndex uses an explicit callback handler (not monkey-patching), so
+    there is nothing to undo globally.  Remove the handler from your
+    ``CallbackManager`` to stop receiving events::
+
+        Settings.callback_manager = CallbackManager([])  # remove all handlers
+    """

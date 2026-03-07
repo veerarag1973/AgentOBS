@@ -28,6 +28,8 @@ if TYPE_CHECKING:
 
 __all__ = [
     "LLMSchemaCallbackHandler",
+    "is_patched",
+    "unpatch",
 ]
 
 # ---------------------------------------------------------------------------
@@ -313,3 +315,35 @@ class LLMSchemaCallbackHandler:
             f"source={self._source!r}, "
             f"events={len(self.events)})"
         )
+
+
+# ---------------------------------------------------------------------------
+# Module-level patch / unpatch API (for API consistency with other integrations)
+# ---------------------------------------------------------------------------
+
+def is_patched() -> bool:
+    """Return ``True`` if the LangChain integration module is importable.
+
+    LangChain uses a callback-handler pattern rather than monkey-patching, so
+    there is no global state to check.  This function simply verifies that the
+    LangChain package is available and the handler class is ready to use.
+
+    Returns:
+        ``True`` when LangChain is installed and the handler can be created.
+    """
+    try:
+        _require_langchain()
+        return True
+    except ImportError:
+        return False
+
+
+def unpatch() -> None:
+    """No-op for the LangChain integration.
+
+    LangChain uses an explicit callback handler (not monkey-patching), so
+    there is nothing to undo globally.  Remove the handler from any
+    ``CallbackManager`` or chain you attached it to::
+
+        chain = SomeChain(callbacks=[])  # re-create without the handler
+    """

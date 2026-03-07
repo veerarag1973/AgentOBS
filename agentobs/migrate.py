@@ -29,9 +29,11 @@ Usage
 
 from __future__ import annotations
 
+import warnings
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Mapping
 
 if TYPE_CHECKING:
     from agentobs.event import Event
@@ -40,7 +42,7 @@ __all__: list[str] = [
     "DeprecationRecord",
     "MigrationResult",
     "SunsetPolicy",
-    "v1_to_v2",
+    "assert_no_sunset_reached",
     "v2_migration_roadmap",
 ]
 
@@ -116,7 +118,12 @@ class DeprecationRecord:
     sunset_policy: SunsetPolicy = SunsetPolicy.NEXT_MAJOR
     replacement: str | None = None
     migration_notes: str | None = None
-    field_renames: dict = field(default_factory=dict)  # type: ignore[assignment]
+    field_renames: Mapping[str, str] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        # Ensure field_renames is immutable even though frozen=True only
+        # prevents re-assignment (not mutation of the contained dict).
+        object.__setattr__(self, "field_renames", MappingProxyType(dict(self.field_renames)))
 
     def summary(self) -> str:
         """Return a one-line human-readable summary.
@@ -262,35 +269,85 @@ def v2_migration_roadmap() -> list[DeprecationRecord]:
 
 
 # ---------------------------------------------------------------------------
-# Migration function
+# Migration function (scaffold — not yet implemented)
 # ---------------------------------------------------------------------------
 
 
-def v1_to_v2(event: Event) -> tuple[Event, MigrationResult]:
+class NotImplementedWarning(UserWarning):
+    """Emitted when a scaffold function that is not yet implemented is called."""
+
+
+def v1_to_v2(event: Event) -> tuple[Event, MigrationResult]:  # pragma: no cover
     """Migrate a v1.0 event to the v2.0 schema.
 
-    .. note::
-        This function is a **scaffold** for the upcoming Phase 9 migration
-        work.  It raises :exc:`NotImplementedError` in the v1.x releases.
-        Write the call-site now and upgrade to the full implementation when
-        v2.0 is released.
-
-        The :func:`v2_migration_roadmap` function is available now and
-        describes every change that will be applied when this function is
-        implemented.
+    .. deprecated::
+        This function is **not yet implemented** and raises
+        :exc:`NotImplementedError`.  It exists for forward-compatible
+        call-site stubs only.  Use :func:`v2_migration_roadmap` to inspect
+        all planned v1→v2 changes and :func:`assert_no_sunset_reached` in CI
+        to catch overdue deprecations.
 
     Args:
         event: A v1.x :class:`~agentobs.event.Event` to migrate.
 
     Returns:
-        A ``(event_v2, MigrationResult)`` tuple.
+        A ``(event_v2, MigrationResult)`` tuple (when implemented).
 
     Raises:
-        NotImplementedError: Always in v1.x — v2 schema is not yet finalised.
+        NotImplementedError: Always — v2 migration not yet implemented.
     """
-    raise NotImplementedError(
-        "v1_to_v2 is a scaffold for Phase 9; the v2.0 schema is not yet finalised. "
-        "Use v2_migration_roadmap() to inspect planned v1→v2 changes. "
-        "This function will be implemented in a future release."
+    warnings.warn(
+        "agentobs.v1_to_v2() is not yet implemented. "
+        "Call v2_migration_roadmap() to inspect the planned migration changes. "
+        "This function will be implemented in a future release.",
+        stacklevel=2,
+        category=NotImplementedWarning,
     )
+    raise NotImplementedError(
+        "v1_to_v2 is not yet implemented — "
+        "use v2_migration_roadmap() to inspect planned v1→v2 changes."
+    )
+
+
+def assert_no_sunset_reached(current_version: str) -> None:
+    """Raise :exc:`AssertionError` if any deprecated event type has already
+    reached its announced sunset version.
+
+    Intended for use in CI pipelines to automatically catch soft-obsolete
+    deprecation records before they accumulate unchecked.
+
+    Args:
+        current_version: The SDK version string to compare against
+                         (e.g. ``"2.1.0"``).
+
+    Raises:
+        AssertionError: Lists every deprecation record whose ``sunset``
+                        version is ≤ *current_version*.
+
+    Example::
+
+        from agentobs.migrate import assert_no_sunset_reached
+        assert_no_sunset_reached("2.1.0")  # passes if no sunsets reached
+    """
+    overdue = [
+        r for r in v2_migration_roadmap()
+        if r.sunset and _version_le(r.sunset, current_version)
+    ]
+    if overdue:
+        lines = "\n".join(
+            f"  {r.event_type!r} (sunset={r.sunset!r}, since={r.since!r})"
+            for r in overdue
+        )
+        raise AssertionError(
+            f"{len(overdue)} deprecated event type(s) have reached their sunset "
+            f"version ({current_version!r}):\n{lines}\n"
+            "Remove the deprecated types or extend the sunset version."
+        )
+
+
+def _version_le(sunset: str, current: str) -> bool:
+    """Return ``True`` if *sunset* ≤ *current* using tuple-based comparison."""
+    def _parts(v: str) -> tuple[int, ...]:
+        return tuple(int(x) for x in v.split(".") if x.isdigit())
+    return _parts(sunset) <= _parts(current)
 

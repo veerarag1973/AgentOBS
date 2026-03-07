@@ -103,6 +103,10 @@ class AgentOBSConfig:
         trace_store_size:    Maximum number of distinct traces the ring buffer
                              retains.  Oldest trace is evicted when full.
                              Default: 100.
+        export_max_retries:  Number of retry attempts on transient export failures
+                             before the ``on_export_error`` policy is applied.
+                             Retries use exponential back-off (0.5 s, 1 s, 2 s …).
+                             Default: 3.
     """
 
     exporter: str = "console"
@@ -111,7 +115,7 @@ class AgentOBSConfig:
     service_name: str = "unknown-service"
     env: str = "production"
     service_version: str = "0.0.0"
-    signing_key: str | None = None
+    signing_key: str | None = field(default=None, repr=False)
     redaction_policy: Any = None  # RedactionPolicy | None — avoids circular import
     on_export_error: str = "warn"  # "warn" | "raise" | "drop"
     include_raw_tool_io: bool = False  # opt-in to store raw tool I/O (ToolCall.arguments_raw / result_raw)
@@ -120,6 +124,7 @@ class AgentOBSConfig:
     trace_filters: list[Callable[["Event"], bool]] = field(default_factory=list)
     enable_trace_store: bool = False   # opt-in in-process trace store
     trace_store_size: int = 100        # ring buffer capacity (number of traces)
+    export_max_retries: int = 3        # retry count for transient export failures
 
 
 # ---------------------------------------------------------------------------

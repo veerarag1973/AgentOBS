@@ -611,7 +611,7 @@ class DecisionPoint:
 # Payload dataclasses
 # ---------------------------------------------------------------------------
 
-@dataclass
+@dataclass(frozen=True)
 class SpanPayload:
     """RFC-0001 §8.1 — A single unit of LLM work.
 
@@ -757,7 +757,7 @@ class SpanPayload:
         )
 
 
-@dataclass
+@dataclass(frozen=True)
 class AgentStepPayload:
     """RFC-0001 §8.4 — One iteration of a multi-step agent loop.
 
@@ -871,7 +871,7 @@ class AgentStepPayload:
         )
 
 
-@dataclass
+@dataclass(frozen=True)
 class AgentRunPayload:
     """RFC-0001 §8.5 — Root-level summary for a complete agent run.
 

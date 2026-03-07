@@ -25,7 +25,7 @@ import time
 import warnings
 from typing import Any
 
-__all__ = ["AgentOBSCrewAIHandler", "patch"]
+__all__ = ["AgentOBSCrewAIHandler", "patch", "unpatch", "is_patched"]
 
 
 class AgentOBSCrewAIHandler:
@@ -198,6 +198,7 @@ def patch() -> None:
         if hasattr(crewai, "callbacks") and isinstance(crewai.callbacks, list):
             handler = AgentOBSCrewAIHandler()
             crewai.callbacks.append(handler)
+            crewai._agentobs_patched = True  # type: ignore[attr-defined]
             return
     except Exception as exc:
         warnings.warn(
@@ -205,3 +206,46 @@ def patch() -> None:
             "Attach AgentOBSCrewAIHandler manually instead.",
             stacklevel=2,
         )
+
+
+_PATCH_FLAG = "_agentobs_patched"
+
+
+def unpatch() -> None:
+    """Remove the :class:`AgentOBSCrewAIHandler` from CrewAI global callbacks.
+
+    Safe to call even if :func:`patch` was never called.
+    """
+    if importlib.util.find_spec("crewai") is None:
+        return
+    try:
+        import crewai  # noqa: PLC0415, F401
+
+        if not getattr(crewai, _PATCH_FLAG, False):
+            return
+        if hasattr(crewai, "callbacks") and isinstance(crewai.callbacks, list):
+            crewai.callbacks[:] = [
+                cb for cb in crewai.callbacks
+                if not isinstance(cb, AgentOBSCrewAIHandler)
+            ]
+        try:
+            del crewai._agentobs_patched  # type: ignore[attr-defined]
+        except AttributeError:
+            pass
+    except Exception:
+        pass
+
+
+def is_patched() -> bool:
+    """Return ``True`` if CrewAI has been patched by :func:`patch`.
+
+    Returns:
+        ``True`` when the agentobs handler is registered; ``False`` otherwise.
+    """
+    if importlib.util.find_spec("crewai") is None:
+        return False
+    try:
+        import crewai  # noqa: PLC0415, F401
+        return bool(getattr(crewai, _PATCH_FLAG, False))
+    except Exception:
+        return False

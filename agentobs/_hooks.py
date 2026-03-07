@@ -4,7 +4,7 @@ Provides a :class:`HookRegistry` for registering callbacks that fire when
 spans of specific operation types start or end.  A module-level singleton
 ``hooks`` is exported from ``agentobs.__init__`` for convenience.
 
-Usage::
+Usage — synchronous hooks::
 
     import agentobs
 
@@ -17,15 +17,22 @@ Usage::
         if span.status == "error":
             alert(f"Agent error: {span.error}")
 
+Usage — async hooks (for async-first applications)::
+
+    @agentobs.hooks.on_llm_call_async
+    async def async_log_llm(span) -> None:
+        await db.log_span(span.span_id, span.model)
+
 Hook callbacks receive the :class:`~agentobs._span.Span` object.  Start
 hooks fire in ``SpanContextManager.__enter__`` (before the body executes);
 end hooks fire in ``SpanContextManager.__exit__`` (after the body, before
 export).
 
 **Thread safety**: ``HookRegistry`` uses a ``threading.RLock`` so hooks can
-be registered from any thread.  Hook *callbacks themselves* are called on
-whatever thread the span context manager runs on — no locking is applied
-inside the callback invocations.
+be registered from any thread.  Synchronous hook *callbacks* are called on
+whatever thread the span context manager runs on.  Async hook callbacks are
+scheduled via :func:`asyncio.ensure_future` if a loop is running, otherwise
+they are silently skipped.
 
 **Error isolation**: if a hook raises an exception the error is suppressed
 (emitted via ``warnings.warn``) so that hook failures never abort user code.
@@ -33,9 +40,11 @@ inside the callback invocations.
 
 from __future__ import annotations
 
+import asyncio
+import inspect
 import threading
 import warnings
-from typing import Callable, TYPE_CHECKING
+from typing import Callable, Coroutine, TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from agentobs._span import Span
@@ -43,10 +52,11 @@ if TYPE_CHECKING:
 __all__ = ["HookRegistry", "hooks"]
 
 # ---------------------------------------------------------------------------
-# Type alias
+# Type aliases
 # ---------------------------------------------------------------------------
 
 HookFn = Callable[["Span"], None]
+AsyncHookFn = Callable[["Span"], Coroutine[Any, Any, None]]
 
 # Hook kind constants — match the operation strings used in SpanPayload.
 _HOOK_AGENT_START = "agent_start"
@@ -114,6 +124,12 @@ class HookRegistry:
             _HOOK_LLM_CALL: [],
             _HOOK_TOOL_CALL: [],
         }
+        self._async_hooks: dict[str, list[AsyncHookFn]] = {
+            _HOOK_AGENT_START: [],
+            _HOOK_AGENT_END: [],
+            _HOOK_LLM_CALL: [],
+            _HOOK_TOOL_CALL: [],
+        }
 
     # ------------------------------------------------------------------
     # Registration decorators / methods
@@ -149,11 +165,51 @@ class HookRegistry:
             self._hooks[_HOOK_TOOL_CALL].append(fn)
         return fn
 
+    # ------------------------------------------------------------------
+    # Async registration decorators / methods
+    # ------------------------------------------------------------------
+
+    def on_agent_start_async(self, fn: AsyncHookFn) -> AsyncHookFn:
+        """Register an **async** callback to fire when an agent span **starts**.
+
+        The coroutine is scheduled via :func:`asyncio.ensure_future` when a
+        running event loop is detected.  If no loop is running the callback is
+        silently skipped.
+
+        Can be used as a decorator::
+
+            @hooks.on_agent_start_async
+            async def cb(span): await db.record_start(span.span_id)
+        """
+        with self._lock:
+            self._async_hooks[_HOOK_AGENT_START].append(fn)
+        return fn
+
+    def on_agent_end_async(self, fn: AsyncHookFn) -> AsyncHookFn:
+        """Register an **async** callback to fire when an agent span **ends**."""
+        with self._lock:
+            self._async_hooks[_HOOK_AGENT_END].append(fn)
+        return fn
+
+    def on_llm_call_async(self, fn: AsyncHookFn) -> AsyncHookFn:
+        """Register an **async** callback to fire on LLM spans (start **and** end)."""
+        with self._lock:
+            self._async_hooks[_HOOK_LLM_CALL].append(fn)
+        return fn
+
+    def on_tool_call_async(self, fn: AsyncHookFn) -> AsyncHookFn:
+        """Register an **async** callback to fire on tool-call spans (start **and** end)."""
+        with self._lock:
+            self._async_hooks[_HOOK_TOOL_CALL].append(fn)
+        return fn
+
     def clear(self) -> None:
-        """Unregister all hooks."""
+        """Unregister all synchronous and async hooks."""
         with self._lock:
             for key in self._hooks:
                 self._hooks[key].clear()
+            for key in self._async_hooks:
+                self._async_hooks[key].clear()
 
     # ------------------------------------------------------------------
     # Internal fire helpers (called by SpanContextManager)
@@ -195,11 +251,39 @@ class HookRegistry:
                     )
                 except Exception:
                     pass  # if warn itself raises (e.g. treated as error), ignore
+        # Fire async hooks if a loop is running.
+        self._fire_async(kind, span)
+
+    def _fire_async(self, kind: str, span: "Span") -> None:
+        """Schedule async hook coroutines on the running event loop (if any)."""
+        with self._lock:
+            async_callbacks = list(self._async_hooks.get(kind, []))
+        if not async_callbacks:
+            return
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return  # no event loop running — skip async hooks silently
+        for cb in async_callbacks:
+            try:
+                coro = cb(span)
+                if inspect.isawaitable(coro):
+                    asyncio.ensure_future(coro, loop=loop)
+            except Exception as exc:
+                try:
+                    warnings.warn(
+                        f"agentobs async hook error in {cb!r}: {exc}",
+                        UserWarning,
+                        stacklevel=2,
+                    )
+                except Exception:
+                    pass
 
     def __repr__(self) -> str:
         with self._lock:
             counts = {k: len(v) for k, v in self._hooks.items()}
-        return f"HookRegistry({counts})"
+            async_counts = {k: len(v) for k, v in self._async_hooks.items()}
+        return f"HookRegistry(sync={counts}, async={async_counts})"
 
 
 # ---------------------------------------------------------------------------
