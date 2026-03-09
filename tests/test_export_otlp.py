@@ -396,7 +396,7 @@ class TestOTLPExporterInit:
 
     def test_invalid_scheme_url_raises(self) -> None:
         with pytest.raises(ValueError, match="endpoint"):
-            OTLPExporter("ftp://invalid-scheme.example.com")
+            OTLPExporter("ftp://invalid-scheme.example.com")  # NOSONAR
 
     def test_custom_headers_copied(self) -> None:
         headers = {"Authorization": "Bearer token"}

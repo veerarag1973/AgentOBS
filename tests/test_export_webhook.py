@@ -120,7 +120,7 @@ class TestWebhookExporterInit:
 
     def test_invalid_scheme_url_raises(self) -> None:
         with pytest.raises(ValueError, match="url"):
-            WebhookExporter("ftp://invalid-scheme.example.com")
+            WebhookExporter("ftp://invalid-scheme.example.com")  # NOSONAR
 
     def test_defaults(self) -> None:
         exp = WebhookExporter("http://example.com")  # NOSONAR
