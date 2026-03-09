@@ -99,7 +99,7 @@ def _handle_export_error(exc: Exception) -> None:
 
     try:
         policy = get_config().on_export_error
-    except Exception:  # NOSONAR — config retrieval can raise anything
+    except Exception:  # NOSONAR
         policy = "warn"  # safe fallback if config itself is broken
 
     if policy == "raise":
@@ -121,7 +121,7 @@ def _reset_exporter() -> None:
             try:
                 if hasattr(_cached_exporter, "close"):
                     _cached_exporter.close()  # type: ignore[union-attr]
-            except Exception as exc:  # NOSONAR — exporter.close() can raise arbitrary errors
+            except Exception as exc:  # NOSONAR
                 _handle_export_error(exc)
         _cached_exporter = None
     with _sign_lock:

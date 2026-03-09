@@ -254,8 +254,8 @@ class Event:
         "_trace_id",
     )
 
-    def __init__(  # noqa: PLR0913
-        self,  # NOSONAR — Event has many optional fields by design
+    def __init__(  # noqa: PLR0913  # NOSONAR
+        self,
         *,
         event_type: str | EventType,
         source: str,
