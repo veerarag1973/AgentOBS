@@ -903,8 +903,8 @@ class TestPhase6EndToEnd:
         _run_stack_var.set(())
 
         try:
-            with tracer.agent_run("gpt-agent") as _agent_run:
-                with tracer.agent_step("llm-step") as _agent_step:
+            with tracer.agent_run("gpt-agent"):
+                with tracer.agent_step("llm-step"):
                     with tracer.span("gpt-4o-call") as span:
                         # Simulate auto-populate from patched OpenAI
                         _auto_populate_span(_make_response(

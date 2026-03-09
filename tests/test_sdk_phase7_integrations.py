@@ -85,7 +85,8 @@ def _inject_fake_anthropic() -> None:
 
 
 def _remove_fake_anthropic() -> None:
-    for key in [k for k in sys.modules if k == "anthropic" or k.startswith("anthropic.")]:
+    anthropic_keys = [k for k in sys.modules if k == "anthropic" or k.startswith("anthropic.")]
+    for key in anthropic_keys:
         del sys.modules[key]
 
 
@@ -339,7 +340,8 @@ def _inject_fake_ollama() -> None:
 
 
 def _remove_fake_ollama() -> None:
-    for key in [k for k in sys.modules if k == "ollama" or k.startswith("ollama.")]:
+    ollama_keys = [k for k in sys.modules if k == "ollama" or k.startswith("ollama.")]
+    for key in ollama_keys:
         del sys.modules[key]
 
 
@@ -513,7 +515,8 @@ def _inject_fake_groq() -> None:
 
 
 def _remove_fake_groq() -> None:
-    for key in [k for k in sys.modules if k == "groq" or k.startswith("groq.")]:
+    groq_keys = [k for k in sys.modules if k == "groq" or k.startswith("groq.")]
+    for key in groq_keys:
         del sys.modules[key]
 
 
@@ -769,7 +772,8 @@ def _inject_fake_together() -> None:
 
 
 def _remove_fake_together() -> None:
-    for key in [k for k in sys.modules if k == "together" or k.startswith("together.")]:
+    together_keys = [k for k in sys.modules if k == "together" or k.startswith("together.")]
+    for key in together_keys:
         del sys.modules[key]
 
 

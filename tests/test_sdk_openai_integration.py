@@ -386,18 +386,20 @@ def _build_mock_openai() -> types.ModuleType:
 
 
 def _uninstall_mock_openai() -> None:
-    for key in [k for k in sys.modules if k == "openai" or k.startswith("openai.")]:
+    openai_keys = [k for k in sys.modules if k == "openai" or k.startswith("openai.")]
+    for key in openai_keys:
         del sys.modules[key]
 
 
 class TestPatchLifecycle:
     def setup_method(self) -> None:
         # Remove real or leftover mock openai from sys.modules
-        for key in [k for k in sys.modules if k == "openai" or k.startswith("openai.")]:
+        openai_keys = [k for k in sys.modules if k == "openai" or k.startswith("openai.")]
+        for key in openai_keys:
             del sys.modules[key]
 
     def teardown_method(self) -> None:
-        self.setup_method()
+        _uninstall_mock_openai()
 
     def test_is_patched_false_when_not_installed(self) -> None:
         from agentobs.integrations.openai import is_patched  # noqa: PLC0415
@@ -627,11 +629,12 @@ class TestPatchedMethodInvocation:
     """Test that the wrapper bodies (lines 95-97, 110-112) actually execute."""
 
     def setup_method(self) -> None:
-        for key in [k for k in sys.modules if k == "openai" or k.startswith("openai.")]:
+        openai_keys = [k for k in sys.modules if k == "openai" or k.startswith("openai.")]
+        for key in openai_keys:
             del sys.modules[key]
 
     def teardown_method(self) -> None:
-        self.setup_method()
+        _uninstall_mock_openai()
 
     def test_patched_sync_create_populates_span(self) -> None:
         """Calling the patched Completions.create executes the wrapper body."""

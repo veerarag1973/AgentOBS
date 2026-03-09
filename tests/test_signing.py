@@ -536,7 +536,7 @@ class TestAuditStreamConstruction:
         with pytest.raises(AttributeError, match="immutable"):
             stream.new_attr = "value"  # type: ignore[attr-defined]
 
-    def test_len_zero_on_construction(self) -> None:
+    def test_len_zero_on_construction(self) -> None:  # NOSONAR
         stream = AuditStream(org_secret=_SECRET, source=_SOURCE)
         assert len(stream) == 0
 
