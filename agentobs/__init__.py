@@ -363,7 +363,7 @@ from agentobs.cache import (
 )
 from agentobs.lint import LintError, run_checks
 
-__version__: str = "1.0.7"
+__version__: str = "1.0.8"
 #: RFC-0001 conformance profile label (AGENTOBS-Enterprise-2.0).
 from typing import Final as _Final
 CONFORMANCE_PROFILE: _Final[str] = "AGENTOBS-Enterprise-2.0"

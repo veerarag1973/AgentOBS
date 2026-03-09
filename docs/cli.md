@@ -41,7 +41,7 @@ agentobs -V
 **Example output**
 
 ```
-agentobs 1.0.7 [AGENTOBS-Enterprise-2.0]
+agentobs 1.0.8 [AGENTOBS-Enterprise-2.0]
 ```
 
 The bracketed label is `CONFORMANCE_PROFILE` from `agentobs.CONFORMANCE_PROFILE`

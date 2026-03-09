@@ -298,7 +298,7 @@ Add to your CI pipeline (`Makefile`, GitHub Actions, etc.):
 ```python
 class AgentOBSChecker:
     name: str = "agentobs-lint"
-    version: str = "1.0.7"
+    version: str = "1.0.8"
     def __init__(self, tree: ast.AST, filename: str = "(none)") -> None: ...
     def run(self) -> Iterable[tuple[int, int, str, type]]: ...
 ```

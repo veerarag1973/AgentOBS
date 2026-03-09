@@ -55,7 +55,7 @@ all optional extras.
 
 ```python
 import agentobs  # pip install agentobs  →  import agentobs
-print(agentobs.__version__)   # 1.0.7
+print(agentobs.__version__)   # 1.0.8
 print(agentobs.SCHEMA_VERSION)  # 2.0
 
 from agentobs import Event, EventType

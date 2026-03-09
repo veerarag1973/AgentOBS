@@ -23,7 +23,7 @@ class AgentOBSChecker:
     """flake8 plugin that wraps :func:`agentobs.lint.run_checks`."""
 
     name = "agentobs-lint"
-    version = "1.0.7"
+    version = "1.0.8"
 
     def __init__(self, tree: ast.AST, filename: str = "<unknown>") -> None:
         self.tree = tree

@@ -46,7 +46,7 @@ _OTLP_STATUS_OK = 1
 _OTLP_STATUS_ERROR = 2
 
 _SCOPE_NAME = "agentobs"
-_SCOPE_VERSION = "1.0.7"
+_SCOPE_VERSION = "1.0.8"
 
 
 # ---------------------------------------------------------------------------
