@@ -27,8 +27,7 @@ pip install "agentobs[jsonschema]"
 Validate `event` against the published JSON Schema.
 
 The schema version is read from `event.schema_version` and the matching schema
-file is selected automatically (RFC §15.5). Falls back to `"2.0"` when the
-field is absent.
+file is selected automatically (RFC §15.5).
 
 **Args:**
 
@@ -63,8 +62,8 @@ validate_event(event)  # passes silently
 Load and cache a JSON Schema from disk by version.
 
 The schema is loaded once per version key and cached in memory. If `version`
-is `None`, the current default (`"2.0"`) is used. Unknown versions fall back
-to the closest matching major version.
+is `None`, the current default (`"2.0"`) is used. Unknown versions raise
+`ValueError`.
 
 **Args:**
 
@@ -77,7 +76,7 @@ to the closest matching major version.
 **Raises:**
 
 - `FileNotFoundError` — if the schema file cannot be found relative to the package root.
-- `ValueError` — if an unknown version with no major-version fallback is requested.
+- `ValueError` — if an unknown schema version is requested.
 
 **Example:**
 
@@ -94,9 +93,9 @@ schema_v1 = load_schema("1.0")   # loads schemas/v1.0/schema.json
 
 | Field | Rule |
 |-------|------|
-| `schema_version` | Required. Must match SemVer pattern (e.g. `"1.0"`). |
+| `schema_version` | Required. Must be one of `"1.0"` or `"2.0"`. |
 | `event_id` | Required. Must be a valid 26-character ULID. |
-| `event_type` | Required. Must match `^(?:llm\.[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*){1,3}|[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*){2,}\.[a-z][a-z0-9_]*)$`. |
+| `event_type` | Required. Must be either a registered first-party RFC event type or a valid reverse-domain custom type outside `llm.*`. |
 | `timestamp` | Required. Must be UTC ISO-8601 ending in `Z`. |
 | `source` | Required. Must match `tool-name@semver` pattern. |
 | `payload` | Required. Must be a non-empty object. |

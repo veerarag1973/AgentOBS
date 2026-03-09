@@ -2,24 +2,30 @@
 
 > **Auto-documented module:** `agentobs.namespaces.audit`
 
-The `llm.audit.*` namespace records HMAC signing-key lifecycle events and the
-results of audit-chain verification runs (RFC-0001 §11).  These events allow
-operators to reconstruct a tamper-evident history of key rotations and to
-log the outcome of every chain-integrity check.
+The RFC-canonical `llm.audit.*` namespace currently includes one registered
+first-party event type:
+
+- `llm.audit.key.rotated`
+
+The `agentobs.namespaces.audit` module also ships helper payload dataclasses
+for chain-verification outcomes. Those payloads are useful, but their
+corresponding event types are **not** part of the canonical RFC Appendix B
+registry. If you use them, emit them under a reverse-domain custom event type
+(e.g. `x.mycompany.audit.chain.verified`) rather than `llm.*`.
 
 ## Payload classes
 
-| Class | Event type | Description |
-|-------|-----------|-------------|
-| `AuditKeyRotatedPayload` | `llm.audit.key.rotated` | An HMAC signing key was rotated |
-| `AuditChainVerifiedPayload` | `llm.audit.chain.verified` | An audit chain segment was verified intact |
-| `AuditChainTamperedPayload` | `llm.audit.chain.tampered` | Tampering or a gap was detected in the audit chain |
+| Class | Canonical event type | Notes |
+|-------|----------------------|-------|
+| `AuditKeyRotatedPayload` | `llm.audit.key.rotated` | RFC Appendix B canonical event type |
+| `AuditChainVerifiedPayload` | — | Use with a custom reverse-domain event type |
+| `AuditChainTamperedPayload` | — | Use with a custom reverse-domain event type |
 
 ---
 
 ## `AuditKeyRotatedPayload`
 
-Records that an HMAC signing key was replaced.  `effective_from_event_id` is
+Records that an HMAC signing key was replaced. `effective_from_event_id` is
 the ULID of the first event signed with the new key, enabling exact replay
 of any chain segment.
 
@@ -33,7 +39,7 @@ of any chain segment.
 | `key_algorithm` | `str` | — | Defaults to `"HMAC-SHA256"` |
 | `effective_from_event_id` | `str \| None` | — | ULID of first event signed with the new key |
 
-### Example
+### Canonical example
 
 ```python
 from agentobs import Event, EventType
@@ -59,7 +65,7 @@ event = Event(
 
 ## `AuditChainVerifiedPayload`
 
-Records that a segment of the audit chain was checked and found intact.
+Represents a successful audit-chain verification result.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -69,10 +75,10 @@ Records that a segment of the audit chain was checked and found intact.
 | `verified_at` | `str` | ✓ | ISO 8601 timestamp of the verification run |
 | `verified_by` | `str` | ✓ | Identity of the verifier (service or operator) |
 
-### Example
+### Custom event-type example
 
 ```python
-from agentobs import Event, EventType
+from agentobs import Event
 from agentobs.namespaces.audit import AuditChainVerifiedPayload
 
 payload = AuditChainVerifiedPayload(
@@ -84,7 +90,7 @@ payload = AuditChainVerifiedPayload(
 )
 
 event = Event(
-    event_type=EventType.AUDIT_CHAIN_VERIFIED,
+    event_type="x.mycompany.audit.chain.verified",
     source="audit-worker@1.0.0",
     org_id="org_01HX",
     payload=payload.to_dict(),
@@ -95,8 +101,7 @@ event = Event(
 
 ## `AuditChainTamperedPayload`
 
-Records that tampering or a sequence gap was detected when verifying the audit
-chain.  `severity` guides incident-response triage.
+Represents a failed chain-verification result (tampering or sequence gaps).
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -108,10 +113,10 @@ chain.  `severity` guides incident-response triage.
 | `gap_prev_ids` | `list[str]` | — | ULIDs immediately before each detected gap |
 | `severity` | `str \| None` | — | `"low"`, `"medium"`, `"high"`, or `"critical"` |
 
-### Example
+### Custom event-type example
 
 ```python
-from agentobs import Event, EventType
+from agentobs import Event
 from agentobs.namespaces.audit import AuditChainTamperedPayload
 
 payload = AuditChainTamperedPayload(
@@ -125,7 +130,7 @@ payload = AuditChainTamperedPayload(
 )
 
 event = Event(
-    event_type=EventType.AUDIT_CHAIN_TAMPERED,
+    event_type="x.mycompany.audit.chain.tampered",
     source="audit-worker@1.0.0",
     org_id="org_01HX",
     payload=payload.to_dict(),

@@ -12,7 +12,7 @@ Every event carries a common **envelope** regardless of the event type:
 |-------|----------|-------------|
 | `schema_version` | Auto | Defaults to `"2.0"` (consumers also accept `"1.0"` for backward compatibility). |
 | `event_id` | Auto | ULID (26-character, time-ordered, URL-safe). Auto-generated if omitted. |
-| `event_type` | **Yes** | Namespaced event type string (`llm.<ns>.<entity>.<action>`). Use an `EventType` member or a valid custom `x.*` type. |
+| `event_type` | **Yes** | Event type string. Use a registered first-party `EventType` value (RFC Appendix B) or a valid reverse-domain custom type outside `llm.*` (e.g. `x.company.entity.action`). |
 | `timestamp` | Auto | UTC ISO-8601 (`YYYY-MM-DDTHH:MM:SS.ffffffZ`). Auto-generated. |
 | `source` | **Yes** | Emitting tool in `"name@semver"` format, e.g. `"llm-trace@1.0.0"`. |
 | `payload` | **Yes** | Tool-specific `dict`. Must be non-empty. All values must be JSON-serialisable. |
@@ -47,9 +47,9 @@ EventType.COST_SESSION_RECORDED      # "llm.cost.session.recorded"
 
 # Guard namespace
 EventType.GUARD_INPUT_BLOCKED        # "llm.guard.input.blocked"
-EventType.GUARD_OUTPUT_FLAGGED       # "llm.guard.output.flagged"
+EventType.GUARD_OUTPUT_BLOCKED       # "llm.guard.output.blocked"
 
-# ... and 40+ more
+# ... and many more
 ```
 
 To use your own event types, prefix with `x.<company>`:

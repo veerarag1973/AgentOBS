@@ -282,7 +282,7 @@ await stream.drain(GrafanaLokiExporter(
 # Fan-out: guard-blocked events -> Slack webhook
 await stream.route(
     WebhookExporter("https://hooks.slack.com/your-webhook"),
-    predicate=lambda e: e.event_type == "llm.guard.blocked",
+  predicate=lambda e: e.event_type == "llm.guard.output.blocked",
 )
 ```
 

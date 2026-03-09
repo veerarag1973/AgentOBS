@@ -62,12 +62,13 @@ __all__ = [
 # ---------------------------------------------------------------------------
 # Validation patterns (RFC-0001 §7)
 # ---------------------------------------------------------------------------
-# Built-in:  llm.<namespace>.<entity>.<action>  (4-part, e.g. llm.trace.span.completed)
-#            llm.<namespace>.<action>            (3-part, e.g. llm.cache.hit)
-# Extension: <tld>.<company>.<entity>.<action>  (reverse-domain, e.g. com.example.foo.bar)
+# Built-in:  llm.<namespace>.<entity>.<action> where namespace is one of the
+#            RFC-registered namespaces from §7.2.
+# Extension: reverse-domain prefix outside llm.*
+#            (e.g. com.example.<entity>.<action>). 
 EVENT_TYPE_PATTERN: Final[str] = (
-    r"^(?:llm\.[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*){1,3}"
-    r"|[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*){2,}\.[a-z][a-z0-9_]*)$"
+    r"^(?:llm\.(?:trace|cost|cache|eval|guard|fence|prompt|redact|diff|template|audit)\.(?:[a-z][a-z0-9_]*|[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*)"
+    r"|(?!llm\.)[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)+\.[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*)$"
 )
 _EVENT_TYPE_RE: Final[re.Pattern[str]] = re.compile(EVENT_TYPE_PATTERN)
 

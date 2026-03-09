@@ -42,10 +42,11 @@ from typing import TYPE_CHECKING, Any, Final
 
 from agentobs.exceptions import (
     DeserializationError,
+    EventTypeError,
     SchemaValidationError,
     SerializationError,
 )
-from agentobs.types import _EVENT_TYPE_RE, EventType
+from agentobs.types import _EVENT_TYPE_RE, EventType, is_registered, validate_custom
 from agentobs.ulid import generate as _generate_ulid
 from agentobs.ulid import validate as _validate_ulid
 
@@ -828,6 +829,15 @@ def _validate_event_type(value: str) -> None:
             value,
             "must match 'llm.<ns>.<entity>.<action>' or 'x.<company>.<…>'",
         )
+    if not is_registered(value):
+        try:
+            validate_custom(value)
+        except EventTypeError as exc:
+            raise SchemaValidationError(
+                "event_type",
+                value,
+                str(exc),
+            ) from exc
 
 
 def _validate_timestamp(value: str) -> None:

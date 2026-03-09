@@ -95,7 +95,7 @@ stream = EventStream()
 stream.add_exporter(JSONLExporter("all.jsonl"))
 stream.add_exporter(
     WebhookExporter("https://pagerduty.example/events"),
-    filter=lambda e: e.event_type == "llm.guard.blocked",
+    filter=lambda e: e.event_type == "llm.guard.output.blocked",
 )
 
 stream.emit(event)     # emits to all matching exporters

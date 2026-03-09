@@ -43,7 +43,8 @@ import re
 from typing import Any
 
 from agentobs.event import Event
-from agentobs.exceptions import SchemaValidationError
+from agentobs.exceptions import EventTypeError, SchemaValidationError
+from agentobs.types import is_registered, validate_custom
 
 __all__: list[str] = ["load_schema", "validate_event"]
 
@@ -71,11 +72,10 @@ _SCHEMA_PATH: pathlib.Path = _SCHEMA_PATHS["1.0"]
 
 # RFC-0001 §6.3 — first char 0-7 (timestamp MSB constraint)
 _ULID_RE: re.Pattern[str] = re.compile(r"^[0-7][0-9A-HJKMNP-TV-Z]{25}$")
-_SEMVER_RE: re.Pattern[str] = re.compile(
-    r"^\d+\.\d+(?:\.\d+)?(?:[.-][a-zA-Z0-9.]+)?$"
-)
+# RFC-0001 §15.5 — only 1.0 and 2.0 are accepted schema versions.
+_ACCEPTED_SCHEMA_VERSIONS: frozenset[str] = frozenset({"1.0", "2.0"})
 _EVENT_TYPE_RE: re.Pattern[str] = re.compile(
-    r"^(?:llm\.[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*){1,3}|[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*){2,}\.[a-z][a-z0-9_]*)$"  # NOSONAR — complex but spec-required pattern
+    r"^(?:llm\.(?:trace|cost|cache|eval|guard|fence|prompt|redact|diff|template|audit)\.(?:[a-z][a-z0-9_]*|[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*)|(?!llm\.)[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*)+\.[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*)$"  # NOSONAR — RFC §7 grammar with registered llm namespaces
 )
 # RFC-0001 §6.1 — microsecond precision mandatory (exactly 6 decimal places)
 _TIMESTAMP_RE: re.Pattern[str] = re.compile(
@@ -90,6 +90,7 @@ _SPAN_ID_RE: re.Pattern[str] = re.compile(r"^[0-9a-f]{16}$")
 # Checksum and signature carry distinct prefix indicators set by signing.py.
 _CHECKSUM_RE: re.Pattern[str] = re.compile(r"^sha256:[0-9a-f]{64}$")
 _SIGNATURE_RE: re.Pattern[str] = re.compile(r"^hmac-sha256:[0-9a-f]{64}$")
+_MAX_TAG_KEYS: int = 50
 
 # ---------------------------------------------------------------------------
 # Schema loader
@@ -128,16 +129,8 @@ def load_schema(version: str | None = None) -> dict[str, Any]:
     if resolved in _CACHED_SCHEMAS:
         return _CACHED_SCHEMAS[resolved]
 
-    # Look up the path; fall back to v1.0 for unknown versions so that
-    # callers with future minor versions (e.g. "2.1") still validate.
+    # RFC-0001 §15.5: unknown schema versions MUST raise and stop processing.
     path = _SCHEMA_PATHS.get(resolved)
-    if path is None:
-        # Try major-version match (e.g. "2.1" → "2.0", "1.5" → "1.0").
-        major = resolved.split(".")[0]
-        for key, candidate in _SCHEMA_PATHS.items():
-            if key.split(".")[0] == major:
-                path = candidate
-                break
     if path is None:
         raise ValueError(
             f"Unknown schema version {resolved!r}. "
@@ -207,6 +200,12 @@ def _validate_tags(tags: Any) -> None:
             received=tags,
             reason="'tags' must be an object",
         )
+    if len(tags) > _MAX_TAG_KEYS:
+        raise SchemaValidationError(
+            field="tags",
+            received=tags,
+            reason=f"'tags' must contain at most {_MAX_TAG_KEYS} keys",
+        )
     for k, v in tags.items():
         if not isinstance(k, str) or not k:
             raise SchemaValidationError(
@@ -236,9 +235,24 @@ def _stdlib_validate(doc: dict[str, Any]) -> None:
             reason="event must serialise to a JSON object",
         )
 
-    _check_string_field(doc, "schema_version", pattern=_SEMVER_RE)
+    _check_string_field(doc, "schema_version")
+    if doc["schema_version"] not in _ACCEPTED_SCHEMA_VERSIONS:
+        raise SchemaValidationError(
+            field="schema_version",
+            received=doc["schema_version"],
+            reason=f"'schema_version' must be one of {sorted(_ACCEPTED_SCHEMA_VERSIONS)!r}",
+        )
     _check_string_field(doc, "event_id", pattern=_ULID_RE)
     _check_string_field(doc, "event_type", pattern=_EVENT_TYPE_RE)
+    if not is_registered(doc["event_type"]):
+        try:
+            validate_custom(doc["event_type"])
+        except EventTypeError as exc:
+            raise SchemaValidationError(
+                field="event_type",
+                received=doc["event_type"],
+                reason=str(exc),
+            ) from exc
     _check_string_field(doc, "timestamp", pattern=_TIMESTAMP_RE)
     _check_string_field(doc, "source", pattern=_SOURCE_RE)
 

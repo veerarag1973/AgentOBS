@@ -68,7 +68,7 @@ class Event(
     event_type: str,
     source: str,
     payload: Dict[str, Any],
-    schema_version: str = "1.0",
+    schema_version: str = "2.0",
     event_id: Optional[str] = None,
     timestamp: Optional[str] = None,
     trace_id: Optional[str] = None,
@@ -95,10 +95,10 @@ provided.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `event_type` | `str` | — | Namespaced event type, e.g. `"llm.trace.span.completed"`. Must match `llm.<ns>.<entity>.<action>` or `x.<company>.<…>`. |
+| `event_type` | `str` | — | Event type string. Must be either a registered first-party `EventType` value (RFC Appendix B) or a valid reverse-domain custom type outside `llm.*` (e.g. `x.company.entity.action`). |
 | `source` | `str` | — | Tool name + full semver, e.g. `"llm-trace@0.3.1"`. |
 | `payload` | `Dict[str, Any]` | — | Non-empty dict of event-type-specific data. |
-| `schema_version` | `str` | `"2.0"` | Schema version string matching SemVer pattern. |
+| `schema_version` | `str` | `"2.0"` | Schema version. Allowed values: `"1.0"` and `"2.0"` only. |
 | `event_id` | `str \| None` | `None` | 26-character ULID. Auto-generated if `None`. |
 | `timestamp` | `str \| None` | `None` | UTC ISO-8601 timestamp. Auto-generated if `None`. |
 | `trace_id` | `str \| None` | `None` | OpenTelemetry trace ID — 32 lowercase hex chars. |
@@ -135,7 +135,7 @@ All properties are read-only.
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `schema_version` | `str` | Schema version string (e.g. `"1.0"`). |
+| `schema_version` | `str` | Schema version string (`"1.0"` or `"2.0"`). |
 | `event_id` | `str` | 26-character ULID event identifier. |
 | `event_type` | `str` | Namespaced event type string. |
 | `timestamp` | `str` | UTC ISO-8601 timestamp string. |
