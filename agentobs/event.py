@@ -63,6 +63,8 @@ SCHEMA_VERSION: Final[str] = "2.0"
 #: Accepted schema versions for backward-compatibility (RFC-0001 §15.5).
 _ACCEPTED_SCHEMA_VERSIONS: Final[frozenset[str]] = frozenset({"1.0", "2.0"})
 
+_MUST_BE_STRING: Final[str] = "must be a string"
+
 #: ``service-name@semver`` — e.g. ``my-agent@1.2.0`` or ``MyAgent@1.0.0``
 #: RFC-0001 §5.1: first char letter, then letters/digits/._- ; ``@`` ; semver
 _SOURCE_PATTERN: Final[re.Pattern[str]] = re.compile(
@@ -701,7 +703,7 @@ class Event:
 def _validate_schema_version(value: str) -> None:
     if not isinstance(value, str):
         raise SchemaValidationError(
-            "schema_version", value, "must be a string"
+            "schema_version", value, _MUST_BE_STRING
         )
     if value not in _ACCEPTED_SCHEMA_VERSIONS:
         raise SchemaValidationError(
@@ -713,7 +715,7 @@ def _validate_schema_version(value: str) -> None:
 
 def _validate_event_id(value: str) -> None:
     if not isinstance(value, str):
-        raise SchemaValidationError("event_id", value, "must be a string")
+        raise SchemaValidationError("event_id", value, _MUST_BE_STRING)
     if not _validate_ulid(value):
         raise SchemaValidationError(
             "event_id",
@@ -724,7 +726,7 @@ def _validate_event_id(value: str) -> None:
 
 def _validate_event_type(value: str) -> None:
     if not isinstance(value, str):
-        raise SchemaValidationError("event_type", value, "must be a string")
+        raise SchemaValidationError("event_type", value, _MUST_BE_STRING)
     if not _EVENT_TYPE_RE.match(value):
         raise SchemaValidationError(
             "event_type",
@@ -735,7 +737,7 @@ def _validate_event_type(value: str) -> None:
 
 def _validate_timestamp(value: str) -> None:
     if not isinstance(value, str):
-        raise SchemaValidationError("timestamp", value, "must be a string")
+        raise SchemaValidationError("timestamp", value, _MUST_BE_STRING)
     if not _TIMESTAMP_PATTERN.match(value):
         raise SchemaValidationError(
             "timestamp",
@@ -753,7 +755,7 @@ def _validate_timestamp(value: str) -> None:
 
 def _validate_source(value: str) -> None:
     if not isinstance(value, str):
-        raise SchemaValidationError("source", value, "must be a string")
+        raise SchemaValidationError("source", value, _MUST_BE_STRING)
     if not _SOURCE_PATTERN.match(value):
         raise SchemaValidationError(
             "source",
@@ -775,7 +777,7 @@ def _validate_payload(value: object) -> None:
 
 def _validate_hex_id(field: str, value: str, expected_len: int) -> None:
     if not isinstance(value, str):
-        raise SchemaValidationError(field, value, "must be a string")
+        raise SchemaValidationError(field, value, _MUST_BE_STRING)
     pattern = _TRACE_ID_PATTERN if expected_len == 32 else _SPAN_ID_PATTERN  # noqa: PLR2004
     if not pattern.match(value):
         raise SchemaValidationError(
@@ -787,7 +789,7 @@ def _validate_hex_id(field: str, value: str, expected_len: int) -> None:
 
 def _validate_string_id(field: str, value: str) -> None:
     if not isinstance(value, str):
-        raise SchemaValidationError(field, value, "must be a string")
+        raise SchemaValidationError(field, value, _MUST_BE_STRING)
     if not value:
         raise SchemaValidationError(
             field, value, "must be a non-empty string"
@@ -796,7 +798,7 @@ def _validate_string_id(field: str, value: str) -> None:
 
 def _validate_ulid_field(field: str, value: str) -> None:
     if not isinstance(value, str):
-        raise SchemaValidationError(field, value, "must be a string")
+        raise SchemaValidationError(field, value, _MUST_BE_STRING)
     if not _validate_ulid(value):
         raise SchemaValidationError(
             field, value, "must be a valid 26-character ULID"

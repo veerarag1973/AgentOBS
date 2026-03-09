@@ -318,8 +318,7 @@ class TestAsyncContextManager:
                     await exp.export(_make_event())
                     raise ValueError("deliberate")  # noqa: TRY301
             except ValueError:
-                pass
-
+                ...
         asyncio.run(_run())
         assert exp_ref[0]._closed
 

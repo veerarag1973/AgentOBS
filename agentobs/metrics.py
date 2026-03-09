@@ -161,6 +161,77 @@ def _is_tool_span(payload: dict) -> bool:
 # ---------------------------------------------------------------------------
 
 
+def _process_llm_span(
+    payload: dict[str, object],
+    duration_ms: float,
+    llm_latencies: list[float],
+    token_by_model: dict[str, dict[str, int]],
+    cost_by_model: dict[str, float],
+) -> tuple[int, int, float]:
+    """Process LLM span metrics; returns (input_tokens, output_tokens, cost_usd)."""
+    if duration_ms >= 0:
+        llm_latencies.append(duration_ms)
+    inp = out = 0
+    cost_usd = 0.0
+    tu = payload.get("token_usage")
+    if tu:
+        inp = int(tu.get("input_tokens", 0))  # type: ignore[union-attr]
+        out = int(tu.get("output_tokens", 0))  # type: ignore[union-attr]
+        tot = int(tu.get("total_tokens", 0))   # type: ignore[union-attr]
+        model_name = (payload.get("model") or {}).get("name", "unknown")  # type: ignore[union-attr]
+        token_by_model[model_name]["input_tokens"] += inp
+        token_by_model[model_name]["output_tokens"] += out
+        token_by_model[model_name]["total_tokens"] += tot
+    cost = payload.get("cost")
+    if cost:
+        cost_usd = float(cost.get("total_cost_usd", 0.0))  # type: ignore[union-attr]
+        model_name = (payload.get("model") or {}).get("name", "unknown")  # type: ignore[union-attr]
+        cost_by_model[model_name] += cost_usd
+    return inp, out, cost_usd
+
+
+def _process_span_event(
+    event: "Event",
+    span_count: int,
+    trace_errors: dict[str, bool],
+    llm_latencies: list[float],
+    token_by_model: dict[str, dict[str, int]],
+    cost_by_model: dict[str, float],
+    tool_total: int,
+    tool_errors: int,
+    total_input_tokens: int,
+    total_output_tokens: int,
+    total_cost_usd: float,
+) -> tuple[int, int, int, int, float]:
+    """Process a single span event; returns updated counters."""
+    payload = event.payload
+    span_count += 1
+    status = payload.get("status", "ok")
+    trace_id = payload.get("trace_id", "")
+    duration_ms = float(payload.get("duration_ms", 0.0))
+
+    if trace_id and trace_id not in trace_errors:
+        trace_errors[trace_id] = False  # type: ignore[assignment]
+
+    if status == "error" and trace_id:
+        trace_errors[trace_id] = True  # type: ignore[assignment]
+
+    if _is_llm_span(payload):  # type: ignore[arg-type]
+        inp, out, cost_usd = _process_llm_span(
+            payload, duration_ms, llm_latencies, token_by_model, cost_by_model  # type: ignore[arg-type]
+        )
+        total_input_tokens += inp
+        total_output_tokens += out
+        total_cost_usd += cost_usd
+
+    if _is_tool_span(payload):  # type: ignore[arg-type]
+        tool_total += 1
+        if status == "error":
+            tool_errors += 1
+
+    return span_count, tool_total, tool_errors, total_input_tokens, total_output_tokens, total_cost_usd  # type: ignore[return-value]
+
+
 def aggregate(events: Iterable["Event"]) -> MetricsSummary:
     """Aggregate a collection of AgentOBS events into a :class:`MetricsSummary`.
 
@@ -190,47 +261,14 @@ def aggregate(events: Iterable["Event"]) -> MetricsSummary:
 
     for event in events_list:
         payload = event.payload
-        et = _event_type_str(event)
 
         if _is_span_event(event):
-            span_count += 1
-            status = payload.get("status", "ok")
-            trace_id = payload.get("trace_id", "")
-            duration_ms = float(payload.get("duration_ms", 0.0))
-
-            if trace_id and trace_id not in trace_errors:
-                trace_errors[trace_id] = False
-
-            if status == "error" and trace_id:
-                trace_errors[trace_id] = True
-
-            # LLM span metrics
-            if _is_llm_span(payload):
-                if duration_ms >= 0:
-                    llm_latencies.append(duration_ms)
-                tu = payload.get("token_usage")
-                if tu:
-                    inp = int(tu.get("input_tokens", 0))
-                    out = int(tu.get("output_tokens", 0))
-                    tot = int(tu.get("total_tokens", 0))
-                    total_input_tokens += inp
-                    total_output_tokens += out
-                    model_name = (payload.get("model") or {}).get("name", "unknown")
-                    token_by_model[model_name]["input_tokens"] += inp
-                    token_by_model[model_name]["output_tokens"] += out
-                    token_by_model[model_name]["total_tokens"] += tot
-                cost = payload.get("cost")
-                if cost:
-                    c = float(cost.get("total_cost_usd", 0.0))
-                    total_cost_usd += c
-                    model_name = (payload.get("model") or {}).get("name", "unknown")
-                    cost_by_model[model_name] += c
-
-            # Tool span metrics
-            if _is_tool_span(payload):
-                tool_total += 1
-                if status == "error":
-                    tool_errors += 1
+            span_count, tool_total, tool_errors, total_input_tokens, total_output_tokens, total_cost_usd = _process_span_event(  # type: ignore[assignment]
+                event, span_count, trace_errors, llm_latencies,
+                token_by_model, cost_by_model,  # type: ignore[arg-type]
+                tool_total, tool_errors, total_input_tokens,
+                total_output_tokens, total_cost_usd,
+            )
 
         elif _is_agent_completed(event):
             dur = float(payload.get("duration_ms", 0.0))

@@ -133,7 +133,7 @@ class TestEmitSpan:
     def test_emit_span_completed_on_ok_span(self) -> None:
         cap = _install_exporter()
         with SpanContextManager(name="ok-span"):
-            pass
+            ...
         assert len(cap.events) == 1
         assert cap.events[0].event_type == EventType.TRACE_SPAN_COMPLETED
 
@@ -143,21 +143,21 @@ class TestEmitSpan:
             with SpanContextManager(name="err-span"):
                 raise ValueError("fail")  # noqa: TRY301
         except ValueError:
-            pass
+            ...
         assert len(cap.events) == 1
         assert cap.events[0].event_type == EventType.TRACE_SPAN_FAILED
 
     def test_emitted_event_has_span_id(self) -> None:
         cap = _install_exporter()
         with SpanContextManager(name="span") as span:
-            pass
+            ...
         event = cap.events[0]
         assert event.span_id == span.span_id
 
     def test_emitted_event_has_trace_id(self) -> None:
         cap = _install_exporter()
         with SpanContextManager(name="span") as span:
-            pass
+            ...
         event = cap.events[0]
         assert event.trace_id == span.trace_id
 
@@ -166,7 +166,7 @@ class TestEmitSpan:
         configure(service_name="test-service", service_version="1.0.0")
         cap = _install_exporter()
         with SpanContextManager(name="span"):
-            pass
+            ...
         event = cap.events[0]
         assert "test-service" in event.source
 
@@ -175,7 +175,7 @@ class TestEmitSpan:
         configure(env="staging")
         cap = _install_exporter()
         with SpanContextManager(name="span"):
-            pass
+            ...
         event = cap.events[0]
         assert event.tags is not None
         assert event.tags["env"] == "staging"
@@ -213,7 +213,7 @@ class TestEmitAgentStep:
     def test_emit_agent_step_event_type(self) -> None:
         cap = _install_exporter()
         with AgentRunContextManager("agent"), AgentStepContextManager("step"):
-            pass
+            ...
         # Events: step event + run event
         step_events = [e for e in cap.events if e.event_type == EventType.TRACE_AGENT_STEP]
         assert len(step_events) == 1
@@ -244,7 +244,7 @@ class TestEmitAgentRun:
     def test_emit_agent_run_event_type(self) -> None:
         cap = _install_exporter()
         with AgentRunContextManager("agent"):
-            pass
+            ...
         run_events = [e for e in cap.events if e.event_type == EventType.TRACE_AGENT_COMPLETED]
         assert len(run_events) == 1
 
@@ -258,7 +258,7 @@ class TestEmitAgentRun:
     def test_run_event_has_trace_id(self) -> None:
         cap = _install_exporter()
         with AgentRunContextManager("agent") as run:
-            pass
+            ...
         run_event = next(e for e in cap.events if e.event_type == EventType.TRACE_AGENT_COMPLETED)
         assert run_event.trace_id == run.trace_id
 
@@ -304,6 +304,6 @@ class TestBuildExporter:
         cap = _install_exporter()
         _clean_stacks()
         with SpanContextManager(name="org-span"):
-            pass
+            ...
         assert cap.events[0].org_id == "org_stream_test"
         configure(org_id=None)

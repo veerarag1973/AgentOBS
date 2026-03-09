@@ -602,7 +602,7 @@ class TestTraceStoreDispatchIntegration:
 
         with patch("agentobs._store.TraceStore.record") as mock_record:
             with tracer.span("test-span"):
-                pass
+                ...
             mock_record.assert_not_called()
 
 

@@ -437,7 +437,7 @@ class TestDiffPayloads:
             diff_type="response",
             similarity_score=0.95,
         )
-        assert p.similarity_score == 0.95
+        assert p.similarity_score == pytest.approx(0.95)
         assert p.added_tokens is None
 
     def test_diff_computed_round_trip(self) -> None:

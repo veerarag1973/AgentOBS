@@ -116,6 +116,40 @@ def _check_org_disjoint(
     return violations
 
 
+def _check_missing_org_ids(events: Sequence[object]) -> list[IsolationViolation]:
+    """Return violations for events with no org_id (strict mode check)."""
+    result = []
+    for evt in events:
+        eid = getattr(evt, "event_id", None) or ""
+        if getattr(evt, "org_id", None) is None:
+            result.append(IsolationViolation(
+                event_id=eid,
+                violation_type="missing_org_id",
+                detail="org_id is None; all events must be scoped in strict mode",
+            ))
+    return result
+
+
+def _check_mixed_org_ids(group: Sequence[object]) -> list[IsolationViolation]:
+    """Return violations if a group contains events from more than one org_id."""
+    result = []
+    unique_org_ids = {
+        getattr(evt, "org_id", None)
+        for evt in group
+        if getattr(evt, "org_id", None) is not None
+    }
+    if len(unique_org_ids) > 1:
+        for evt in group:
+            eid = getattr(evt, "event_id", None) or ""
+            if getattr(evt, "org_id", None) is not None:
+                result.append(IsolationViolation(
+                    event_id=eid,
+                    violation_type="mixed_org_ids",
+                    detail=f"Group contains multiple org_ids: {sorted(unique_org_ids)!r}",
+                ))
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
@@ -155,48 +189,12 @@ def verify_tenant_isolation(
     """
     violations: list[IsolationViolation] = []
 
-    # ------------------------------------------------------------------
-    # 1. Strict: check for missing org_ids
-    # ------------------------------------------------------------------
     if strict:
-        for evt in list(group_a) + list(group_b):
-            eid = getattr(evt, "event_id", None) or ""
-            if getattr(evt, "org_id", None) is None:
-                violations.append(
-                    IsolationViolation(
-                        event_id=eid,
-                        violation_type="missing_org_id",
-                        detail="org_id is None; all events must be scoped in strict mode",
-                    )
-                )
+        violations.extend(_check_missing_org_ids(list(group_a) + list(group_b)))
 
-    # ------------------------------------------------------------------
-    # 2. Mixed org_ids within each group
-    # ------------------------------------------------------------------
     for group in (group_a, group_b):
-        unique_org_ids = {
-            getattr(evt, "org_id", None)
-            for evt in group
-            if getattr(evt, "org_id", None) is not None
-        }
-        if len(unique_org_ids) > 1:
-            for evt in group:
-                eid = getattr(evt, "event_id", None) or ""
-                if getattr(evt, "org_id", None) is not None:
-                    violations.append(
-                        IsolationViolation(
-                            event_id=eid,
-                            violation_type="mixed_org_ids",
-                            detail=(
-                                f"Group contains multiple org_ids: "
-                                f"{sorted(unique_org_ids)!r}"
-                            ),
-                        )
-                    )
+        violations.extend(_check_mixed_org_ids(group))
 
-    # ------------------------------------------------------------------
-    # 3. Shared org_ids across groups
-    # ------------------------------------------------------------------
     violations.extend(_check_org_disjoint(group_a, group_b))
 
     return IsolationResult(passed=len(violations) == 0, violations=violations)

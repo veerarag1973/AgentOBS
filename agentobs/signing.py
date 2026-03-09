@@ -309,6 +309,36 @@ def assert_verified(event: Event, org_secret: str) -> None:
         raise VerificationError(event_id=event.event_id)
 
 
+def _check_event_signature(
+    event: "Event",
+    current_secret: str,
+    first_tampered: str | None,
+    tampered_count: int,
+) -> tuple[str | None, int]:
+    """Check signature validity; returns updated (first_tampered, tampered_count)."""
+    if not verify(event, current_secret):
+        tampered_count += 1
+        if first_tampered is None:
+            first_tampered = event.event_id
+    return first_tampered, tampered_count
+
+
+def _check_chain_linkage(
+    event: "Event",
+    i: int,
+    event_list: list["Event"],
+    gaps: list[str],
+) -> None:
+    """Check chain linkage; appends to gaps if a gap is detected."""
+    if i == 0:
+        if event.prev_id is not None:
+            gaps.append(event.event_id)
+    else:
+        expected_prev = event_list[i - 1].event_id
+        if event.prev_id != expected_prev:
+            gaps.append(event.event_id)
+
+
 def verify_chain(
     events: Sequence[Event],
     org_secret: str,
@@ -368,23 +398,10 @@ def verify_chain(
     event_list = list(events)
 
     for i, event in enumerate(event_list):
-        # ---- 1. Signature validity ----------------------------------------
-        if not verify(event, current_secret):
-            tampered_count += 1
-            if first_tampered is None:
-                first_tampered = event.event_id
-
-        # ---- 2. Chain linkage / gap detection ------------------------------
-        if i == 0:
-            # The first event must have no predecessor.
-            if event.prev_id is not None:
-                gaps.append(event.event_id)
-        else:
-            expected_prev = event_list[i - 1].event_id
-            if event.prev_id != expected_prev:
-                gaps.append(event.event_id)
-
-        # ---- 3. Key rotation (takes effect AFTER verifying this event) -----
+        first_tampered, tampered_count = _check_event_signature(
+            event, current_secret, first_tampered, tampered_count
+        )
+        _check_chain_linkage(event, i, event_list, gaps)
         if event.event_id in km:
             current_secret = km[event.event_id]
 

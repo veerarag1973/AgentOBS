@@ -253,6 +253,27 @@ def print_tree(
 # ---------------------------------------------------------------------------
 
 
+def _sum_token_usage(payloads: list["SpanPayload"]) -> tuple[int, int]:
+    """Sum input and output tokens across all payloads."""
+    total_in = total_out = 0
+    for p in payloads:
+        if p.token_usage is not None:
+            inp = getattr(p.token_usage, "input_tokens", None) or getattr(p.token_usage, "prompt_tokens", None) or 0
+            out = getattr(p.token_usage, "output_tokens", None) or getattr(p.token_usage, "completion_tokens", None) or 0
+            total_in += int(inp)
+            total_out += int(out)
+    return total_in, total_out
+
+
+def _sum_costs(payloads: list["SpanPayload"]) -> float:
+    """Sum total_cost_usd across all payloads."""
+    total = 0.0
+    for p in payloads:
+        if p.cost is not None:
+            total += getattr(p.cost, "total_cost_usd", None) or 0.0
+    return total
+
+
 def summary(spans: Sequence[_SpanLike]) -> dict[str, Any]:
     """Return an aggregated statistics dict for the given spans.
 
@@ -310,19 +331,8 @@ def summary(spans: Sequence[_SpanLike]) -> dict[str, Any]:
     )
     total_duration_ms = sum(p.duration_ms for p in payloads)
 
-    total_input_tokens = 0
-    total_output_tokens = 0
-    for p in payloads:
-        if p.token_usage is not None:
-            inp = getattr(p.token_usage, "input_tokens", None) or getattr(p.token_usage, "prompt_tokens", None) or 0
-            out = getattr(p.token_usage, "output_tokens", None) or getattr(p.token_usage, "completion_tokens", None) or 0
-            total_input_tokens += int(inp)
-            total_output_tokens += int(out)
-
-    total_cost_usd = 0.0
-    for p in payloads:
-        if p.cost is not None:
-            total_cost_usd += getattr(p.cost, "total_cost_usd", None) or 0.0
+    total_input_tokens, total_output_tokens = _sum_token_usage(payloads)
+    total_cost_usd = _sum_costs(payloads)
 
     error_count = sum(1 for p in payloads if p.status == "error")
     timeout_count = sum(1 for p in payloads if p.status == "timeout")
@@ -396,6 +406,42 @@ _HTML_TEMPLATE = """\
 """
 
 
+def _build_span_row_html(p: "SpanPayload", t_min: int, total_range: int) -> str:
+    """Build the HTML row string for a single span in the Gantt chart."""
+    left_pct = (p.start_time_unix_nano - t_min) / total_range * 100
+    width_pct = max((p.end_time_unix_nano - p.start_time_unix_nano) / total_range * 100, 0.3)
+    css_class = p.status if p.status in {"ok", "error", "timeout"} else "ok"
+
+    label_text = _html_mod.escape(p.span_name)
+    model_part = ""
+    if p.model is not None:
+        model_name = getattr(p.model, "name", None) or str(p.model)
+        model_part = f'<span class="model"> [{_html_mod.escape(str(model_name))}]</span>'
+
+    bar_label = f"{p.duration_ms:.0f}ms"
+    if p.token_usage is not None:
+        inp = getattr(p.token_usage, "input_tokens", None) or 0
+        out = getattr(p.token_usage, "output_tokens", None) or 0
+        if inp or out:
+            bar_label += f" in={inp} out={out}"
+
+    title_attr = _html_mod.escape(
+        f"{p.span_name}  {p.status}  {p.duration_ms:.1f}ms"
+        + (f"  {p.error}" if p.error else "")
+    )
+    return (
+        f'<div class="row">'
+        f'<div class="label">{label_text}{model_part}</div>'
+        f'<div class="bar-wrap">'
+        f'<div class="bar {css_class}" title="{title_attr}" '
+        f'style="left:{left_pct:.3f}%;width:{width_pct:.3f}%">'
+        f'{_html_mod.escape(bar_label)}'
+        f'</div>'
+        f'</div>'
+        f'</div>'
+    )
+
+
 def visualize(
     spans: Sequence[_SpanLike],
     *,
@@ -432,48 +478,13 @@ def visualize(
                 fh.write(html_out)
         return html_out
 
-    # Sort by start time.
     payloads = sorted(payloads, key=lambda p: p.start_time_unix_nano)
 
     t_min = payloads[0].start_time_unix_nano
     t_max = max(p.end_time_unix_nano for p in payloads)
     total_range = max(t_max - t_min, 1)  # avoid divide-by-zero
 
-    rows_html: list[str] = []
-    for p in payloads:
-        left_pct = (p.start_time_unix_nano - t_min) / total_range * 100
-        width_pct = max((p.end_time_unix_nano - p.start_time_unix_nano) / total_range * 100, 0.3)
-        css_class = p.status if p.status in {"ok", "error", "timeout"} else "ok"
-
-        label_text = _html_mod.escape(p.span_name)
-        model_part = ""
-        if p.model is not None:
-            model_name = getattr(p.model, "name", None) or str(p.model)
-            model_part = f'<span class="model"> [{_html_mod.escape(str(model_name))}]</span>'
-
-        bar_label = f"{p.duration_ms:.0f}ms"
-        if p.token_usage is not None:
-            inp = getattr(p.token_usage, "input_tokens", None) or 0
-            out = getattr(p.token_usage, "output_tokens", None) or 0
-            if inp or out:
-                bar_label += f" in={inp} out={out}"
-
-        title_attr = _html_mod.escape(
-            f"{p.span_name}  {p.status}  {p.duration_ms:.1f}ms"
-            + (f"  {p.error}" if p.error else "")
-        )
-
-        rows_html.append(
-            f'<div class="row">'
-            f'<div class="label">{label_text}{model_part}</div>'
-            f'<div class="bar-wrap">'
-            f'<div class="bar {css_class}" title="{title_attr}" '
-            f'style="left:{left_pct:.3f}%;width:{width_pct:.3f}%">'
-            f'{_html_mod.escape(bar_label)}'
-            f'</div>'
-            f'</div>'
-            f'</div>'
-        )
+    rows_html = [_build_span_row_html(p, t_min, total_range) for p in payloads]
 
     stats = summary(payloads)
     stats_html = (

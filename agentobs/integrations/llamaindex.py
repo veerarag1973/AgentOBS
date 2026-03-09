@@ -188,6 +188,39 @@ class LLMSchemaEventHandler:
             return None
         return (time.monotonic() - start) * 1000.0
 
+    def _start_event_payload(self, et: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """Build the payload dict for a start event based on the event type."""
+        result: dict[str, Any] = {}
+        if et == "LLM":
+            model_dict = payload.get("model_dict") or {}
+            if isinstance(model_dict, dict):
+                result["model"] = model_dict.get("model")
+        elif et == "FUNCTION_CALL":
+            tool_info = payload.get("tool") or {}
+            if isinstance(tool_info, dict):
+                result["tool_name"] = tool_info.get("name")
+        elif et == "QUERY":
+            result["query"] = payload.get("query_str")
+        return result
+
+    def _end_event_payload(self, et: str, payload: dict[str, Any]) -> dict[str, Any]:
+        """Build the payload dict for an end event based on the event type."""
+        result: dict[str, Any] = {}
+        if et == "LLM":
+            response = payload.get("response")
+            raw = getattr(response, "raw", None) if response is not None else None
+            if isinstance(raw, dict):
+                usage = raw.get("usage") or {}
+                if isinstance(usage, dict):
+                    result["prompt_tokens"] = usage.get("prompt_tokens")
+                    result["completion_tokens"] = usage.get("completion_tokens")
+                    result["total_tokens"] = usage.get("total_tokens")
+        elif et == "FUNCTION_CALL":
+            result["output"] = payload.get("output")
+        elif et == "QUERY":
+            result["response"] = str(payload.get("response", ""))[:2048]
+        return result
+
     # ------------------------------------------------------------------
     # LlamaIndex callback interface
     # ------------------------------------------------------------------
@@ -221,23 +254,11 @@ class LLMSchemaEventHandler:
             self._start_times[event_id] = time.monotonic()
             return event_id
 
-        # Record start time before emitting so duration calculations are accurate.
         self._start_times[event_id] = time.monotonic()
 
         start_et, _ = type_map
         payload = payload or {}
-        event_payload: dict[str, Any] = {"event_id": event_id}
-
-        if et == "LLM":
-            model_dict = payload.get("model_dict") or {}
-            if isinstance(model_dict, dict):
-                event_payload["model"] = model_dict.get("model")
-        elif et == "FUNCTION_CALL":
-            tool_info = payload.get("tool") or {}
-            if isinstance(tool_info, dict):
-                event_payload["tool_name"] = tool_info.get("name")
-        elif et == "QUERY":
-            event_payload["query"] = payload.get("query_str")
+        event_payload: dict[str, Any] = {"event_id": event_id, **self._start_event_payload(et, payload)}
 
         self._make_event(start_et, event_payload)
         return event_id
@@ -272,22 +293,8 @@ class LLMSchemaEventHandler:
         event_payload: dict[str, Any] = {
             "event_id": event_id,
             "duration_ms": duration,
+            **self._end_event_payload(et, payload),
         }
-
-        if et == "LLM":
-            # Try to extract token usage from response.raw
-            response = payload.get("response")
-            raw = getattr(response, "raw", None) if response is not None else None
-            if isinstance(raw, dict):
-                usage = raw.get("usage") or {}
-                if isinstance(usage, dict):
-                    event_payload["prompt_tokens"] = usage.get("prompt_tokens")
-                    event_payload["completion_tokens"] = usage.get("completion_tokens")
-                    event_payload["total_tokens"] = usage.get("total_tokens")
-        elif et == "FUNCTION_CALL":
-            event_payload["output"] = payload.get("output")
-        elif et == "QUERY":
-            event_payload["response"] = str(payload.get("response", ""))[:2048]
 
         self._make_event(end_et, event_payload)
 

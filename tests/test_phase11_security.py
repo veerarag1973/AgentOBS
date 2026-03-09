@@ -116,8 +116,7 @@ class TestSigningChain:
 
         # Emit first batch
         with tracer.span("first"):
-            pass
-
+            ...
         # Reset + emit second batch to a new file
         jsonl2 = tmp_path / "events2.jsonl"
         configure(
@@ -126,8 +125,7 @@ class TestSigningChain:
         )
         _reset_exporter()
         with tracer.span("second"):
-            pass
-
+            ...
         time.sleep(0.01)
         second_events = [json.loads(l) for l in jsonl2.read_text().splitlines() if l.strip()]  # noqa: E741
         assert len(second_events) == 1
@@ -195,7 +193,7 @@ class TestRedactionPipeline:
              patch("agentobs.signing.sign") as mock_sign:
             mock_sign.side_effect = lambda event, org_secret, prev_event=None: event
             with tracer.span("order-test"):
-                pass
+                ...
             time.sleep(0.01)
 
         _reset_exporter()  # clean up

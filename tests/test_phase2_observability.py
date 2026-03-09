@@ -169,7 +169,7 @@ class TestSpanAddEvent:
 
     def test_no_events_omitted_from_payload_dict(self):
         with tracer.span("s") as s:
-            pass
+            ...
         d = s.to_span_payload().to_dict()
         assert "events" not in d
 
@@ -255,7 +255,7 @@ class TestErrorCategory:
     def test_no_error_category_omitted_from_dict(self):
         """When no error occurred, error_category is absent from the dict."""
         with tracer.span("s") as s:
-            pass
+            ...
         d = s.to_span_payload().to_dict()
         assert "error_category" not in d
 
@@ -386,36 +386,36 @@ class TestLLMSpanSchemaAdditions:
 
     def test_span_has_temperature(self):
         with tracer.span("s", model="gpt-4o", temperature=0.7) as s:
-            pass
+            ...
         assert s.temperature == 0.7
 
     def test_span_has_top_p(self):
         with tracer.span("s", top_p=0.95) as s:
-            pass
+            ...
         assert s.top_p == 0.95
 
     def test_span_has_max_tokens(self):
         with tracer.span("s", max_tokens=512) as s:
-            pass
+            ...
         assert s.max_tokens == 512
 
     def test_all_three_fields_together(self):
         with tracer.span("s", model="claude-3", temperature=1.0, top_p=0.9, max_tokens=1024) as s:
-            pass
+            ...
         assert s.temperature == 1.0
         assert s.top_p == 0.9
         assert s.max_tokens == 1024
 
     def test_fields_default_to_none(self):
         with tracer.span("s") as s:
-            pass
+            ...
         assert s.temperature is None
         assert s.top_p is None
         assert s.max_tokens is None
 
     def test_fields_in_span_payload(self):
         with tracer.span("s", temperature=0.5, top_p=0.8, max_tokens=100) as s:
-            pass
+            ...
         p = s.to_span_payload()
         assert p.temperature == 0.5
         assert p.top_p == 0.8
@@ -423,25 +423,25 @@ class TestLLMSpanSchemaAdditions:
 
     def test_temperature_in_payload_to_dict(self):
         with tracer.span("s", temperature=0.3) as s:
-            pass
+            ...
         d = s.to_span_payload().to_dict()
         assert d["temperature"] == 0.3
 
     def test_top_p_in_payload_to_dict(self):
         with tracer.span("s", top_p=0.85) as s:
-            pass
+            ...
         d = s.to_span_payload().to_dict()
         assert d["top_p"] == 0.85
 
     def test_max_tokens_in_payload_to_dict(self):
         with tracer.span("s", max_tokens=256) as s:
-            pass
+            ...
         d = s.to_span_payload().to_dict()
         assert d["max_tokens"] == 256
 
     def test_none_fields_omitted_from_dict(self):
         with tracer.span("s") as s:
-            pass
+            ...
         d = s.to_span_payload().to_dict()
         assert "temperature" not in d
         assert "top_p" not in d
@@ -449,7 +449,7 @@ class TestLLMSpanSchemaAdditions:
 
     def test_fields_survive_from_dict_roundtrip(self):
         with tracer.span("s", temperature=0.9, top_p=0.99, max_tokens=2048) as s:
-            pass
+            ...
         d = s.to_span_payload().to_dict()
         restored = SpanPayload.from_dict(d)
         assert restored.temperature == pytest.approx(0.9)
@@ -458,7 +458,7 @@ class TestLLMSpanSchemaAdditions:
 
     def test_temperature_only_roundtrip(self):
         with tracer.span("s", temperature=0.0) as s:
-            pass
+            ...
         d = s.to_span_payload().to_dict()
         restored = SpanPayload.from_dict(d)
         assert restored.temperature == pytest.approx(0.0)
@@ -476,7 +476,7 @@ class TestLLMSpanSchemaAdditions:
         """Trace.llm_call() must forward sampling params."""
         trace = start_trace("bot")
         with trace.llm_call(model="gpt-4o", temperature=0.2, top_p=0.7, max_tokens=50) as s:
-            pass
+            ...
         trace.end()
         assert s.temperature == 0.2
         assert s.top_p == 0.7
@@ -486,26 +486,26 @@ class TestLLMSpanSchemaAdditions:
         """Trace.span() must forward sampling params."""
         trace = start_trace("bot")
         with trace.span("step", temperature=1.0, max_tokens=10) as s:
-            pass
+            ...
         trace.end()
         assert s.temperature == 1.0
         assert s.max_tokens == 10
 
     def test_zero_temperature_valid(self):
         with tracer.span("s", temperature=0.0) as s:
-            pass
+            ...
         assert s.temperature == 0.0
 
     def test_negative_temperature_stores(self):
         """No validation on temperature — library trusts caller."""
         with tracer.span("s", temperature=-1.0) as s:
-            pass
+            ...
         assert s.temperature == -1.0
 
     def test_max_tokens_in_trace_json(self):
         trace = start_trace("bot")
         with trace.llm_call(model="gpt-4o", max_tokens=128) as s:
-            pass
+            ...
         trace.end()
         data = json.loads(trace.to_json())
         assert data["spans"][0]["max_tokens"] == 128

@@ -173,13 +173,51 @@ def _status_colour(status: str) -> str:
 # ---------------------------------------------------------------------------
 
 
+def _format_event_rows(event: Event, payload: dict[str, object], lines: list[str]) -> None:
+    """Append formatted detail rows to *lines* for the given event."""
+    et = event.event_type
+
+    lines.append(_row("event_id", event.event_id, _BLUE))
+    lines.append(_row("event_type", et))
+
+    trace_id = event.trace_id or _get(payload, "trace_id")
+    if trace_id:
+        lines.append(_row("trace_id", trace_id, _MAGENTA))
+    span_id = event.span_id or _get(payload, "span_id")
+    if span_id:
+        lines.append(_row("span_id", span_id, _MAGENTA))
+
+    dur = _format_duration(payload)
+    if dur:
+        lines.append(_row("duration", dur, _CYAN))
+
+    tokens = _format_tokens(payload)
+    if tokens:
+        lines.append(_row("tokens", tokens, _WHITE))
+
+    cost_str = _format_cost(payload)
+    if cost_str:
+        lines.append(_row("cost", cost_str, _YELLOW))
+
+    status = payload.get("status", "ok")
+    if isinstance(status, str):
+        lines.append(_row("status", status, _status_colour(status)))
+
+    error_msg = payload.get("error")
+    if error_msg:
+        lines.append(_row("error", str(error_msg), _RED))
+
+    if "total_steps" in payload:
+        lines.append(_row("steps", str(payload["total_steps"])))
+    if "step_index" in payload:
+        lines.append(_row("step_index", str(payload["step_index"])))
+
+
 def _format_event(event: Event) -> str:
     """Render *event* as a multi-line console box string."""
     payload = event.payload or {}
     et = event.event_type  # e.g. "llm.trace.span.completed"
 
-    # Determine a compact title from event type + span/agent name.
-    et.split(".")[-1] if "." in et else et  # completed / step / etc.
     namespace_part = et.split(".")[2] if et.count(".") >= _MIN_NAMESPACE_PARTS else "trace"
     span_name = (
         payload.get("span_name")
@@ -192,49 +230,7 @@ def _format_event(event: Event) -> str:
     title = f"{namespace_part}: {span_name}{model_suffix}"
 
     lines: list[str] = [_top_bar(title)]
-
-    # Core identifiers.
-    lines.append(_row("event_id", event.event_id, _BLUE))
-    lines.append(_row("event_type", et))
-
-    trace_id = event.trace_id or _get(payload, "trace_id")
-    if trace_id:
-        lines.append(_row("trace_id", trace_id, _MAGENTA))
-    span_id = event.span_id or _get(payload, "span_id")
-    if span_id:
-        lines.append(_row("span_id", span_id, _MAGENTA))
-
-    # Duration.
-    dur = _format_duration(payload)
-    if dur:
-        lines.append(_row("duration", dur, _CYAN))
-
-    # Token usage.
-    tokens = _format_tokens(payload)
-    if tokens:
-        lines.append(_row("tokens", tokens, _WHITE))
-
-    # Cost.
-    cost_str = _format_cost(payload)
-    if cost_str:
-        lines.append(_row("cost", cost_str, _YELLOW))
-
-    # Status.
-    status = payload.get("status", "ok")
-    if isinstance(status, str):
-        lines.append(_row("status", status, _status_colour(status)))
-
-    # Error (if any).
-    error_msg = payload.get("error")
-    if error_msg:
-        lines.append(_row("error", str(error_msg), _RED))
-
-    # Agent-specific: step count, total_steps.
-    if "total_steps" in payload:
-        lines.append(_row("steps", str(payload["total_steps"])))
-    if "step_index" in payload:
-        lines.append(_row("step_index", str(payload["step_index"])))
-
+    _format_event_rows(event, payload, lines)
     lines.append(_bottom_bar())
     return "\n".join(lines) + "\n"
 

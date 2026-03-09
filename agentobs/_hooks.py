@@ -268,7 +268,7 @@ class HookRegistry:
             try:
                 coro = cb(span)
                 if inspect.isawaitable(coro):
-                    asyncio.ensure_future(coro, loop=loop)
+                    _task = asyncio.ensure_future(coro, loop=loop)  # noqa: F841
             except Exception as exc:
                 try:
                     warnings.warn(

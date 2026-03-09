@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import warnings
+from collections.abc import Generator
 
 import pytest
 
@@ -21,7 +22,7 @@ FIXED_TIMESTAMP = "2026-03-01T12:00:00.000000Z"
 
 
 @pytest.fixture(autouse=True)
-def _reset_global_policy() -> None:
+def _reset_global_policy() -> Generator[None, None, None]:
     """Ensure the global policy is cleared before and after every test."""
     set_global_policy(None)
     yield

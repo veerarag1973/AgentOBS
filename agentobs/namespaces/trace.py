@@ -297,9 +297,9 @@ class CostBreakdown:
             "output_cost_usd": self.output_cost_usd,
             "total_cost_usd": self.total_cost_usd,
         }
-        if self.cached_discount_usd != 0.0:
+        if self.cached_discount_usd:
             d["cached_discount_usd"] = self.cached_discount_usd
-        if self.reasoning_cost_usd != 0.0:
+        if self.reasoning_cost_usd:
             d["reasoning_cost_usd"] = self.reasoning_cost_usd
         if self.currency != "USD":
             d["currency"] = self.currency
@@ -667,24 +667,8 @@ class SpanPayload:
         if self.duration_ms < 0:
             raise ValueError("SpanPayload.duration_ms must be non-negative")
 
-    def to_dict(self) -> dict[str, Any]:
-        """Serialise the payload to a plain ``dict``."""
-        op = self.operation.value if isinstance(self.operation, Enum) else self.operation
-        sk = self.span_kind.value if isinstance(self.span_kind, Enum) else self.span_kind
-        st = self.status.value if isinstance(self.status, Enum) else self.status
-        d: dict[str, Any] = {
-            "span_id": self.span_id,
-            "trace_id": self.trace_id,
-            "span_name": self.span_name,
-            "operation": op,
-            "span_kind": sk,
-            "status": st,
-            "start_time_unix_nano": self.start_time_unix_nano,
-            "end_time_unix_nano": self.end_time_unix_nano,
-            "duration_ms": self.duration_ms,
-            "tool_calls": [tc.to_dict() for tc in self.tool_calls],
-            "reasoning_steps": [rs.to_dict() for rs in self.reasoning_steps],
-        }
+    def _add_optional_fields(self, d: dict[str, Any]) -> None:
+        """Add optional fields to *d* when they are not None/empty."""
         if self.parent_span_id is not None:
             d["parent_span_id"] = self.parent_span_id
         if self.agent_run_id is not None:
@@ -713,6 +697,26 @@ class SpanPayload:
             d["error_category"] = self.error_category
         if self.events:
             d["events"] = [e.to_dict() for e in self.events]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialise the payload to a plain ``dict``."""
+        op = self.operation.value if isinstance(self.operation, Enum) else self.operation
+        sk = self.span_kind.value if isinstance(self.span_kind, Enum) else self.span_kind
+        st = self.status.value if isinstance(self.status, Enum) else self.status
+        d: dict[str, Any] = {
+            "span_id": self.span_id,
+            "trace_id": self.trace_id,
+            "span_name": self.span_name,
+            "operation": op,
+            "span_kind": sk,
+            "status": st,
+            "start_time_unix_nano": self.start_time_unix_nano,
+            "end_time_unix_nano": self.end_time_unix_nano,
+            "duration_ms": self.duration_ms,
+            "tool_calls": [tc.to_dict() for tc in self.tool_calls],
+            "reasoning_steps": [rs.to_dict() for rs in self.reasoning_steps],
+        }
+        self._add_optional_fields(d)
         return d
 
     @classmethod

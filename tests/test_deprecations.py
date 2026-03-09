@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import warnings
+from collections.abc import Generator
 
 import pytest
 
@@ -18,7 +19,7 @@ from agentobs.deprecations import (
 
 
 @pytest.fixture(autouse=True)
-def _clear_global_registry() -> None:
+def _clear_global_registry() -> Generator[None, None, None]:
     """Reset the global registry before and after every test."""
     get_registry().clear()
     yield

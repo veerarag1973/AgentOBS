@@ -391,7 +391,7 @@ class TestOTLPExporterInit:
 
     def test_defaults_applied(self) -> None:
         exp = OTLPExporter("http://localhost")
-        assert exp._timeout == 5.0
+        assert exp._timeout == pytest.approx(5.0)
         assert exp._batch_size == 500
 
     def test_invalid_scheme_url_raises(self) -> None:

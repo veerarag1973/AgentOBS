@@ -893,10 +893,9 @@ class TestPhase6EndToEnd:
             def export(self, event):
                 self.events.append(event)
             def flush(self):
-                pass
+                ...
             def close(self):
-                pass
-
+                ...
         _reset_exporter()
         cap = _CapExporter()
         stream_mod._cached_exporter = cap

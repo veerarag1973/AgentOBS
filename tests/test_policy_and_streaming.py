@@ -424,8 +424,7 @@ class TestAiterFile:
 
         async def _run():
             async for _ in aiter_file(f):
-                pass
-
+                ...
         with pytest.raises(DeserializationError):
             asyncio.run(_run())
 

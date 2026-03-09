@@ -128,16 +128,8 @@ class OTelBridgeExporter:
         return trace.get_tracer(self._tracer_name, self._tracer_version)
 
     @staticmethod
-    def _build_otel_attributes(event: Event) -> dict[str, Any]:  # noqa: PLR0912
-        """Build a flat attribute dict suitable for the OTel SDK ``span.set_attributes()``."""
-        attrs: dict[str, Any] = {
-            "llm.schema_version": event.schema_version,
-            "llm.event_id": event.event_id,
-            "llm.event_type": event.event_type,
-            "llm.source": event.source,
-        }
-
-        # Identity fields
+    def _apply_identity_fields(event: "Event", attrs: dict[str, Any]) -> None:
+        """Add optional identity fields to attrs if present on the event."""
         if event.org_id is not None:
             attrs["llm.org_id"] = event.org_id
         if event.team_id is not None:
@@ -146,17 +138,15 @@ class OTelBridgeExporter:
             attrs["llm.actor_id"] = event.actor_id
         if event.session_id is not None:
             attrs["llm.session_id"] = event.session_id
-
-        # Tags
         if event.tags is not None:
             for tag_key, tag_val in event.tags.items():
                 attrs[f"llm.tag.{tag_key}"] = tag_val
-
-        # Integrity fields
         if event.checksum is not None:
             attrs["llm.checksum"] = event.checksum
 
-        # Payload — flatten one level (avoid deep nesting for SDK compat)
+    @staticmethod
+    def _apply_payload_fields(event: "Event", attrs: dict[str, Any]) -> None:
+        """Flatten event payload (one level deep) into attrs."""
         for k, v in event.payload.items():
             if isinstance(v, (str, int, float, bool)):
                 attrs[f"llm.payload.{k}"] = v
@@ -165,21 +155,30 @@ class OTelBridgeExporter:
                     if isinstance(sub_v, (str, int, float, bool)):
                         attrs[f"llm.payload.{k}.{sub_k}"] = sub_v
 
-        # gen_ai.* semantic conventions — extract from OTLP _kv dicts
+    @staticmethod
+    def _apply_gen_ai_fields(event: "Event", attrs: dict[str, Any]) -> None:
+        """Extract gen_ai.* semantic conventions from OTLP _kv dicts."""
         for kv in _gen_ai_attributes(event):
             key = kv["key"]
             val_wrapper = kv["value"]
-            # Unwrap the OTel AnyValue dict to a plain Python scalar.
             for type_key in ("stringValue", "intValue", "doubleValue", "boolValue"):
                 if type_key in val_wrapper:
                     raw = val_wrapper[type_key]
-                    # intValue is encoded as a string in OTLP/JSON; convert back.
-                    if type_key == "intValue":
-                        attrs[key] = int(raw)
-                    else:
-                        attrs[key] = raw
+                    attrs[key] = int(raw) if type_key == "intValue" else raw
                     break
 
+    @staticmethod
+    def _build_otel_attributes(event: "Event") -> dict[str, Any]:  # noqa: PLR0912
+        """Build a flat attribute dict suitable for the OTel SDK ``span.set_attributes()``."""
+        attrs: dict[str, Any] = {
+            "llm.schema_version": event.schema_version,
+            "llm.event_id": event.event_id,
+            "llm.event_type": event.event_type,
+            "llm.source": event.source,
+        }
+        OTelBridgeExporter._apply_identity_fields(event, attrs)
+        OTelBridgeExporter._apply_payload_fields(event, attrs)
+        OTelBridgeExporter._apply_gen_ai_fields(event, attrs)
         return attrs
 
     @staticmethod
@@ -218,7 +217,7 @@ class OTelBridgeExporter:
     # Single-event export
     # ------------------------------------------------------------------
 
-    async def export(self, event: Event) -> None:
+    async def export(self, event: Event) -> None:  # NOSONAR
         """Export a single event as a completed OTel span.
 
         The span is started and immediately ended using the event's

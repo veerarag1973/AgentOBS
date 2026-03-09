@@ -53,7 +53,7 @@ class AgentOBSCrewAIHandler:
     def on_agent_action(
         self,
         agent: Any,
-        task: Any,
+        _task: Any,
         tool: Any,
         tool_input: Any,
     ) -> None:

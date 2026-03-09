@@ -167,6 +167,7 @@ class TestExportBatch:
         captured: list[bytes] = []
 
         async def _fake_push(self_inner: Any, payload: bytes) -> None:
+            await asyncio.sleep(0)
             captured.append(payload)
 
         with patch.object(GrafanaLokiExporter, "_push", _fake_push):
@@ -202,6 +203,7 @@ class TestExportBatch:
         captured: list[bytes] = []
 
         async def _fake_push(self_inner: Any, payload: bytes) -> None:
+            await asyncio.sleep(0)
             captured.append(payload)
 
         with patch.object(GrafanaLokiExporter, "_push", _fake_push):

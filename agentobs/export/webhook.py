@@ -200,6 +200,23 @@ class WebhookExporter:
     # Internal helpers
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _do_http_post(url: str, body: bytes, headers: dict[str, str], timeout: float, event_id: str) -> None:
+        """Execute a single HTTP POST; raises ExportError on failure."""
+        req = urllib.request.Request(  # noqa: S310
+            url=url,
+            data=body,
+            headers=headers,
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
+                resp.read()
+        except urllib.error.HTTPError as exc:
+            raise ExportError("webhook", f"HTTP {exc.code}: {exc.reason}", event_id) from exc
+        except OSError as exc:
+            raise ExportError("webhook", str(exc), event_id) from exc
+
     async def _post(self, body: bytes, event_id: str) -> None:
         """POST *body* to :attr:`_url` with retry and optional signing.
 
@@ -227,37 +244,15 @@ class WebhookExporter:
                 sleep_secs = min(2 ** (attempt - 1), _MAX_SLEEP)
                 await asyncio.sleep(sleep_secs)
 
-            def _do_request() -> None:
-                req = urllib.request.Request(  # noqa: S310
-                    url=url,
-                    data=body,
-                    headers=request_headers,
-                    method="POST",
-                )
-                try:
-                    with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
-                        resp.read()
-                except urllib.error.HTTPError as exc:
-                    raise ExportError(
-                        "webhook",
-                        f"HTTP {exc.code}: {exc.reason}",
-                        event_id,
-                    ) from exc
-                except OSError as exc:
-                    raise ExportError(
-                        "webhook",
-                        str(exc),
-                        event_id,
-                    ) from exc
-
             loop = asyncio.get_running_loop()
             try:
-                await loop.run_in_executor(None, _do_request)
+                await loop.run_in_executor(
+                    None,
+                    lambda: self._do_http_post(url, body, request_headers, timeout, event_id),
+                )
             except ExportError as exc:
                 last_exc = exc
-                # Only retry on 5xx and network errors; fail fast on 4xx.
-                reason = exc.reason
-                if reason.startswith("HTTP 4"):
+                if exc.reason.startswith("HTTP 4"):
                     raise
             else:
                 return  # success

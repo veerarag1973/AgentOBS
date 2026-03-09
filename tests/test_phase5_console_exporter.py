@@ -628,7 +628,7 @@ class TestConsoleExporterEndToEnd:
     def test_span_prints_to_stdout(self, capsys: pytest.CaptureFixture) -> None:
         with patch("agentobs.exporters.console._use_colour", return_value=False):
             with tracer.span("gpt-call", model="gpt-4o"):
-                pass
+                ...
         captured = capsys.readouterr()
         assert "gpt-call" in captured.out
         assert "gpt-4o" in captured.out
@@ -636,7 +636,7 @@ class TestConsoleExporterEndToEnd:
     def test_agent_run_prints_agent_name(self, capsys: pytest.CaptureFixture) -> None:
         with patch("agentobs.exporters.console._use_colour", return_value=False):
             with tracer.agent_run("my-bot"):
-                pass
+                ...
         captured = capsys.readouterr()
         assert "my-bot" in captured.out
 
@@ -644,7 +644,7 @@ class TestConsoleExporterEndToEnd:
         with patch("agentobs.exporters.console._use_colour", return_value=False):
             with tracer.agent_run("bot"):
                 with tracer.agent_step("search-step"):
-                    pass
+                    ...
         captured = capsys.readouterr()
         assert "search-step" in captured.out
 
@@ -652,14 +652,14 @@ class TestConsoleExporterEndToEnd:
         """Console exporter writes to stdout only — no files created."""
         with patch("agentobs.exporters.console._use_colour", return_value=False):
             with tracer.span("check"):
-                pass
+                ...
         # No agentobs_events.jsonl or similar should be created
         assert not (tmp_path / "agentobs_events.jsonl").exists()
 
     def test_status_ok_and_error_both_render(self, capsys: pytest.CaptureFixture) -> None:
         with patch("agentobs.exporters.console._use_colour", return_value=False):
             with tracer.span("ok-span"):
-                pass
+                ...
             with pytest.raises(ValueError):
                 with tracer.span("err-span"):
                     raise ValueError("simulated error")
@@ -675,7 +675,7 @@ class TestConsoleExporterEndToEnd:
                     step.set_attribute("url", "https://example.com")
                 with tracer.agent_step("process"):
                     with tracer.span("llm-call", model="claude-3"):
-                        pass
+                        ...
         output = capsys.readouterr().out
         assert "smoke-bot" in output
         assert "fetch" in output
@@ -705,7 +705,7 @@ class TestNoColorIntegration:
         os.environ["NO_COLOR"] = "1"
         try:
             with tracer.span("plain-span"):
-                pass
+                ...
         finally:
             os.environ.pop("NO_COLOR", None)
         output = capsys.readouterr().out
@@ -717,7 +717,7 @@ class TestNoColorIntegration:
         os.environ["NO_COLOR"] = "1"
         try:
             with tracer.span("boxed"):
-                pass
+                ...
         finally:
             os.environ.pop("NO_COLOR", None)
         output = capsys.readouterr().out

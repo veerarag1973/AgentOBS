@@ -99,7 +99,7 @@ def _handle_export_error(exc: Exception) -> None:
 
     try:
         policy = get_config().on_export_error
-    except Exception:
+    except Exception:  # NOSONAR — config retrieval can raise anything
         policy = "warn"  # safe fallback if config itself is broken
 
     if policy == "raise":

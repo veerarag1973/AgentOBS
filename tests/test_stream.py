@@ -571,6 +571,5 @@ class TestExporterProtocol:
 
     def test_object_without_export_batch_does_not_satisfy_protocol(self) -> None:
         class NotAnExporter:
-            pass
-
+            ...
         assert not isinstance(NotAnExporter(), Exporter)

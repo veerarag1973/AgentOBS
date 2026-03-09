@@ -104,7 +104,7 @@ class MockExporter:
         with self._lock:
             self.events.append(event)
 
-    async def export_batch(self, events: Any) -> None:
+    async def export_batch(self, events: Any) -> None:  # NOSONAR
         """Async batch export — records all events in *events*.
 
         Args:

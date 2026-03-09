@@ -124,7 +124,7 @@ class TestWebhookExporterInit:
 
     def test_defaults(self) -> None:
         exp = WebhookExporter("http://example.com")
-        assert exp._timeout == 10.0
+        assert exp._timeout == pytest.approx(10.0)
         assert exp._max_retries == 3
         assert exp._secret is None
 
@@ -146,7 +146,7 @@ class TestWebhookRepr:
         assert "hooks.example.com" in repr(exp)
 
     def test_repr_does_not_contain_secret(self) -> None:
-        exp = WebhookExporter("http://example.com", secret="ultra-secret-value")  # noqa: S106
+        exp = WebhookExporter("http://example.com", secret="ultra-secret-value")  # noqa: S106  # NOSONAR
         assert "ultra-secret-value" not in repr(exp)
 
     def test_repr_shows_signed_true_when_secret_set(self) -> None:
@@ -235,7 +235,7 @@ class TestExportSingleEvent:
         assert req.headers.get(sig_key) is None
 
     def test_export_signature_is_verifiable(self) -> None:
-        secret = "verify-me-secret"  # noqa: S105
+        secret = "verify-me-secret"  # noqa: S105  # NOSONAR
         exp = WebhookExporter("http://example.com/hook", secret=secret)
         event = _make_event()
         captured: list = []

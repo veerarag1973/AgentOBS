@@ -283,7 +283,7 @@ class TestBuildOtelAttributes:
         bridge = OTelBridgeExporter()
         event = _make_event(payload={"status": "ok", "cost": 0.01, "flag": True, "count": 3})
         attrs = bridge._build_otel_attributes(event)
-        assert attrs.get("llm.payload.cost") == 0.01
+        assert attrs.get("llm.payload.cost") == pytest.approx(0.01)
         assert attrs.get("llm.payload.flag") is True
         assert attrs.get("llm.payload.count") == 3
 

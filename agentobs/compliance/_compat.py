@@ -34,6 +34,7 @@ __all__ = [
 #   CHK-3  Source conforms to the ``name@semver`` pattern.
 #   CHK-5  Event ID is a valid 26-character ULID.
 
+_REQUIRED_FIELDS_RULE = "Required envelope fields present"
 
 @dataclass
 class CompatibilityViolation:
@@ -103,7 +104,7 @@ def _check_event(event: object) -> list[CompatibilityViolation]:  # type: ignore
         violations.append(
             CompatibilityViolation(
                 check_id="CHK-1",
-                rule="Required envelope fields present",
+                rule=_REQUIRED_FIELDS_RULE,
                 detail="schema_version is empty or missing",
                 event_id=eid,
             )
@@ -112,7 +113,7 @@ def _check_event(event: object) -> list[CompatibilityViolation]:  # type: ignore
         violations.append(
             CompatibilityViolation(
                 check_id="CHK-1",
-                rule="Required envelope fields present",
+                rule=_REQUIRED_FIELDS_RULE,
                 detail="source is empty or missing",
                 event_id=eid,
             )
@@ -121,7 +122,7 @@ def _check_event(event: object) -> list[CompatibilityViolation]:  # type: ignore
         violations.append(
             CompatibilityViolation(
                 check_id="CHK-1",
-                rule="Required envelope fields present",
+                rule=_REQUIRED_FIELDS_RULE,
                 detail="payload is an empty dict; at least one key is required",
                 event_id=eid,
             )

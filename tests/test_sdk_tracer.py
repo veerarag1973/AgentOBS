@@ -78,7 +78,7 @@ class TestTracerSpan:
 
     def test_span_duration_positive(self) -> None:
         with tracer.span("timed"):
-            pass
+            ...
         # span object accessible after exit
         # duration is non-negative
 
@@ -116,7 +116,7 @@ class TestTracerAgentRun:
 
     def test_agent_run_status_ok_by_default(self) -> None:
         with tracer.agent_run("agent") as run:
-            pass
+            ...
         assert run.status == "ok"
 
     def test_exception_sets_error_status(self) -> None:
@@ -126,7 +126,7 @@ class TestTracerAgentRun:
                 ctx = run
                 raise ValueError("agent fail")  # noqa: TRY301
         except ValueError:
-            pass
+            ...
         assert ctx is not None
         assert ctx.status == "error"
 
@@ -151,8 +151,7 @@ class TestTracerAgentStep:
 
     def test_step_outside_run_raises(self) -> None:
         with pytest.raises(RuntimeError), tracer.agent_step("orphan-step"):
-            pass
-
+            ...
     def test_step_inside_run_works(self) -> None:
         from agentobs._span import AgentStepContext  # noqa: PLC0415
         with tracer.agent_run("agent"), tracer.agent_step("step") as step:
@@ -174,11 +173,11 @@ class TestTracerAgentStep:
     def test_multiple_steps_indexed_sequentially(self) -> None:
         with tracer.agent_run("agent"):
             with tracer.agent_step("s0") as s0:
-                pass
+                ...
             with tracer.agent_step("s1") as s1:
-                pass
+                ...
             with tracer.agent_step("s2") as s2:
-                pass
+                ...
         assert s0.step_index == 0
         assert s1.step_index == 1
         assert s2.step_index == 2
@@ -186,9 +185,9 @@ class TestTracerAgentStep:
     def test_step_records_in_run(self) -> None:
         with tracer.agent_run("agent") as run:
             with tracer.agent_step("step-a"):
-                pass
+                ...
             with tracer.agent_step("step-b"):
-                pass
+                ...
         assert len(run._steps) == 2
 
 

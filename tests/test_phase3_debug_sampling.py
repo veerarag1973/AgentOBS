@@ -593,7 +593,7 @@ class TestTraceDebugMethods:
         monkeypatch.setenv("NO_COLOR", "1")
         with start_trace("test-agent") as trace:
             with tracer.span("gpt_call", model="gpt-4o"):
-                pass
+                ...
         trace.print_tree()
         out = capsys.readouterr().out
         # Should contain the span name or trace header
@@ -604,28 +604,28 @@ class TestTraceDebugMethods:
         buf = io.StringIO()
         with start_trace("trace-file") as trace:
             with tracer.span("my_llm"):
-                pass
+                ...
         trace.print_tree(file=buf)
         assert len(buf.getvalue()) > 0
 
     def test_trace_summary_returns_dict(self):
         with start_trace("sum-trace") as trace:
             with tracer.span("chat_call", model="gpt-4o"):
-                pass
+                ...
         result = trace.summary()
         assert isinstance(result, dict)
         assert result["span_count"] >= 1
 
     def test_trace_summary_empty_trace(self):
         with start_trace("empty-trace") as trace:
-            pass
+            ...
         result = trace.summary()
         assert result["span_count"] == 0
 
     def test_trace_visualize_returns_html(self):
         with start_trace("viz-trace") as trace:
             with tracer.span("viz_llm"):
-                pass
+                ...
         html = trace.visualize()
         assert "<!DOCTYPE html>" in html
 
@@ -633,7 +633,7 @@ class TestTraceDebugMethods:
         out_file = tmp_path / "vis.html"
         with start_trace("file-trace") as trace:
             with tracer.span("a_span"):
-                pass
+                ...
         html = trace.visualize(path=str(out_file))
         assert out_file.exists()
         assert out_file.read_text(encoding="utf-8") == html
@@ -641,7 +641,7 @@ class TestTraceDebugMethods:
     def test_print_tree_after_empty_trace(self, monkeypatch, capsys):
         monkeypatch.setenv("NO_COLOR", "1")
         with start_trace("empty") as trace:
-            pass
+            ...
         trace.print_tree()
         out = capsys.readouterr().out
         assert "(no spans)" in out

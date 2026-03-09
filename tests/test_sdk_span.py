@@ -225,7 +225,7 @@ class TestSpanContextManager:
 
     def test_span_stack_cleared_after_context(self) -> None:
         with SpanContextManager(name="outer"):
-            pass
+            ...
         # span should be removed from stack
         stack = _span_stack()
         # can't guarantee empty (other concurrent tests) but our span is gone
@@ -274,7 +274,7 @@ class TestSpanContextManager:
 
     def test_span_ended_after_exit(self) -> None:
         with SpanContextManager(name="timed") as span:
-            pass
+            ...
         assert span.duration_ms is not None
         assert span.duration_ms >= 0
 
@@ -301,7 +301,7 @@ class TestAgentRunContextManager:
 
     def test_clears_run_stack_on_exit(self) -> None:
         with AgentRunContextManager("agent"):
-            pass
+            ...
         assert len(_run_stack()) == 0
 
     def test_run_has_trace_id(self) -> None:
@@ -315,7 +315,7 @@ class TestAgentRunContextManager:
                 ctx = run
                 raise RuntimeError("agent failed")  # noqa: TRY301
         except RuntimeError:
-            pass
+            ...
         assert ctx is not None
         assert ctx.status == "error"
 
@@ -338,8 +338,7 @@ class TestAgentStepContextManager:
     def test_step_outside_run_raises(self) -> None:
         with pytest.raises(RuntimeError, match="tracer.agent_step\\(\\)"):  # noqa: SIM117
             with AgentStepContextManager("step"):
-                pass
-
+                ...
     def test_step_inside_run_yields_context(self) -> None:
         with AgentRunContextManager("agent"), AgentStepContextManager("step-1") as step:
             assert isinstance(step, AgentStepContext)
@@ -362,9 +361,9 @@ class TestAgentStepContextManager:
     def test_step_records_in_run(self) -> None:
         with AgentRunContextManager("agent") as run:
             with AgentStepContextManager("step-A"):
-                pass
+                ...
             with AgentStepContextManager("step-B"):
-                pass
+                ...
         assert len(run._steps) == 2
 
     def test_step_exception_sets_error_status(self) -> None:
@@ -375,7 +374,7 @@ class TestAgentStepContextManager:
                     ctx = step
                     raise ValueError("step failed")  # noqa: TRY301
         except ValueError:
-            pass
+            ...
         assert ctx is not None
         assert ctx.status == "error"
 
@@ -386,7 +385,7 @@ class TestAgentStepContextManager:
 
     def test_step_duration_set_on_exit(self) -> None:
         with AgentRunContextManager("agent"), AgentStepContextManager("step") as step:
-            pass
+            ...
         assert step.duration_ms is not None
         assert step.duration_ms >= 0
 
@@ -407,7 +406,7 @@ class TestAgentRunContextToPayload:
                 # token_usage is a direct attribute, not a method
                 step.token_usage = _token_usage()
             with AgentStepContextManager("s2"):
-                pass
+                ...
         payload = run.to_agent_run_payload()
         assert payload.total_steps == 2
 
@@ -419,7 +418,7 @@ class TestAgentRunContextToPayload:
 
     def test_run_payload_empty_steps(self) -> None:
         with AgentRunContextManager("agent") as run:
-            pass
+            ...
         payload = run.to_agent_run_payload()
         assert payload.total_steps == 0
         assert payload.total_model_calls == 0

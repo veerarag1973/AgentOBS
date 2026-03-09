@@ -219,7 +219,7 @@ class TestEventEqualityAndHash:
         result = Event.__eq__(minimal_event, "string")
         assert result is NotImplemented
         # Via operator: Python falls back to reflect __eq__, ultimately False
-        assert not (minimal_event == "string")  # noqa: SIM201
+        assert minimal_event != "string"  # noqa: SIM201
 
     def test_hashable(self, minimal_event: Event) -> None:
         s: set[Event] = {minimal_event}
@@ -666,23 +666,23 @@ class TestValidationHelpers:
 
     def test_validate_schema_version_not_string(self) -> None:
         with pytest.raises(SchemaValidationError):
-            _validate_schema_version(1)  # type: ignore[arg-type]
+            _validate_schema_version(1)  # type: ignore[arg-type]  # NOSONAR
 
     def test_validate_event_id_not_string(self) -> None:
         with pytest.raises(SchemaValidationError):
-            _validate_event_id(42)  # type: ignore[arg-type]
+            _validate_event_id(42)  # type: ignore[arg-type]  # NOSONAR
 
     def test_validate_event_type_not_string(self) -> None:
         with pytest.raises(SchemaValidationError):
-            _validate_event_type(99)  # type: ignore[arg-type]
+            _validate_event_type(99)  # type: ignore[arg-type]  # NOSONAR
 
     def test_validate_timestamp_not_string(self) -> None:
         with pytest.raises(SchemaValidationError):
-            _validate_timestamp(12345)  # type: ignore[arg-type]
+            _validate_timestamp(12345)  # type: ignore[arg-type]  # NOSONAR
 
     def test_validate_source_not_string(self) -> None:
         with pytest.raises(SchemaValidationError):
-            _validate_source(None)  # type: ignore[arg-type]
+            _validate_source(None)  # type: ignore[arg-type]  # NOSONAR
 
     def test_validate_payload_list_raises(self) -> None:
         with pytest.raises(SchemaValidationError):
@@ -690,11 +690,11 @@ class TestValidationHelpers:
 
     def test_validate_hex_id_not_string(self) -> None:
         with pytest.raises(SchemaValidationError):
-            _validate_hex_id("trace_id", 42, 32)  # type: ignore[arg-type]
+            _validate_hex_id("trace_id", 42, 32)  # type: ignore[arg-type]  # NOSONAR
 
     def test_validate_string_id_not_string(self) -> None:
         with pytest.raises(SchemaValidationError):
-            _validate_string_id("org_id", 42)  # type: ignore[arg-type]
+            _validate_string_id("org_id", 42)  # type: ignore[arg-type]  # NOSONAR
 
     def test_validate_string_id_empty(self) -> None:
         with pytest.raises(SchemaValidationError):
@@ -702,7 +702,7 @@ class TestValidationHelpers:
 
     def test_validate_ulid_field_not_string(self) -> None:
         with pytest.raises(SchemaValidationError):
-            _validate_ulid_field("prev_id", 42)  # type: ignore[arg-type]
+            _validate_ulid_field("prev_id", 42)  # type: ignore[arg-type]  # NOSONAR
 
     def test_validate_ulid_field_invalid(self) -> None:
         with pytest.raises(SchemaValidationError):

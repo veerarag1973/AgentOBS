@@ -160,6 +160,7 @@ class TestLLMSchemaCallbackHandler:
 
         class FakeExporter:
             async def export(self, event: Event) -> None:
+                await asyncio.sleep(0)
                 exported.append(event)
 
         handler = LLMSchemaCallbackHandler(source="app", exporter=FakeExporter())
@@ -324,6 +325,7 @@ class TestLangChainAdditionalCoverage:
 
         class FakeExporter:
             async def export(self, event: Any) -> None:
+                await asyncio.sleep(0)
                 exported.append(event)
 
         handler = self._make_handler(exporter=FakeExporter())
@@ -366,8 +368,7 @@ class TestLangChainAdditionalCoverage:
 
         # Plain object without llm_output attribute.
         class _FakeResponse:
-            pass
-
+            ...
         handler.on_llm_end(response=_FakeResponse(), run_id=run_id)
         ev = handler.events[0]
         assert ev.event_type == "llm.trace.span.completed"
@@ -421,6 +422,7 @@ class TestLlamaIndexAdditionalCoverage:
 
         class FakeExporter:
             async def export(self, event: Any) -> None:
+                await asyncio.sleep(0)
                 exported.append(event)
 
         handler = self._make_handler(exporter=FakeExporter())
@@ -479,7 +481,7 @@ class TestLlamaIndexAdditionalCoverage:
         exported: list[Any] = []
 
         class FakeExporter:
-            async def export(self, event: Any) -> None:  # pragma: no cover
+            async def export(self, event: Any) -> None:  # pragma: no cover  # NOSONAR
                 exported.append(event)
 
         handler = self._make_handler(exporter=FakeExporter())

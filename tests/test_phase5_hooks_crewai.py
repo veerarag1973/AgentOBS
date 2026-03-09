@@ -244,8 +244,7 @@ class TestHooksWiredIntoSpanContextManager:
             end_calls.append("called")
 
         with tracer.span("my-llm", operation="chat"):
-            pass
-
+            ...
         # Hook fires once on start + once on end = 2 total
         assert len(end_calls) == 2
 
@@ -257,8 +256,7 @@ class TestHooksWiredIntoSpanContextManager:
             calls.append(span.name)
 
         with tracer.span("my-tool", operation="tool_call"):
-            pass
-
+            ...
         assert "my-tool" in calls
 
     def test_hook_exception_does_not_abort_span(self):
@@ -272,7 +270,7 @@ class TestHooksWiredIntoSpanContextManager:
         with warnings.catch_warnings(record=True):
             warnings.simplefilter("always")
             with tracer.span("ok-span", operation="chat") as span:
-                pass
+                ...
         assert span.status == "ok"
 
     def test_no_hook_fires_for_unclassified_span(self):
@@ -287,8 +285,7 @@ class TestHooksWiredIntoSpanContextManager:
             calls.append("tool")
 
         with tracer.span("generic-span", operation="some_custom_op"):
-            pass
-
+            ...
         assert calls == []
 
 

@@ -63,6 +63,26 @@ _INTEGRATIONS: list[tuple[str, str, str, str]] = [
 ]
 
 
+def _try_patch_integration(lib_name: str, integration_module: str, patch_fn: str, verbose: bool) -> bool:
+    """Attempt to patch one integration; returns True if newly patched."""
+    try:
+        mod = importlib.import_module(integration_module)
+        getattr(mod, patch_fn)()
+        _PATCHED.add(lib_name)
+        if verbose:
+            print(f"  {lib_name}: patched \u2713")
+        return True
+    except Exception as exc:
+        warnings.warn(
+            f"agentobs.auto: failed to patch {lib_name!r}: {exc}",
+            UserWarning,
+            stacklevel=3,
+        )
+        if verbose:
+            print(f"  {lib_name}: patch failed — {exc}")
+        return False
+
+
 def setup(*, verbose: bool = False) -> set[str]:
     """Detect and patch all installed AgentOBS-supported LLM libraries.
 
@@ -98,27 +118,13 @@ def setup(*, verbose: bool = False) -> set[str]:
                 print(f"  {lib_name}: already patched, skipped")
             continue
 
-        # Check if the library is installed without importing it.
         if importlib.util.find_spec(lib_name) is None:
             if verbose:
                 print(f"  {lib_name}: not installed, skipped")
             continue
 
-        try:
-            mod = importlib.import_module(integration_module)
-            getattr(mod, patch_fn)()
-            _PATCHED.add(lib_name)
+        if _try_patch_integration(lib_name, integration_module, patch_fn, verbose):
             newly_patched.add(lib_name)
-            if verbose:
-                print(f"  {lib_name}: patched \u2713")
-        except Exception as exc:
-            warnings.warn(
-                f"agentobs.auto: failed to patch {lib_name!r}: {exc}",
-                UserWarning,
-                stacklevel=2,
-            )
-            if verbose:
-                print(f"  {lib_name}: patch failed — {exc}")
 
     return newly_patched
 

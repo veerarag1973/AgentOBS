@@ -155,6 +155,29 @@ def _check_string_field(
         )
 
 
+def _validate_tags(tags: Any) -> None:
+    """Validate the tags dict; raise SchemaValidationError on any violation."""
+    if not isinstance(tags, dict):
+        raise SchemaValidationError(
+            field="tags",
+            received=tags,
+            reason="'tags' must be an object",
+        )
+    for k, v in tags.items():
+        if not isinstance(k, str) or not k:
+            raise SchemaValidationError(
+                field=f"tags.{k!r}",
+                received=k,
+                reason="tag key must be a non-empty string",
+            )
+        if not isinstance(v, str) or not v:
+            raise SchemaValidationError(
+                field=f"tags.{k}",
+                received=v,
+                reason="tag value must be a non-empty string",
+            )
+
+
 def _stdlib_validate(doc: dict[str, Any]) -> None:
     """Perform structural validation without the ``jsonschema`` library.
 
@@ -205,26 +228,7 @@ def _stdlib_validate(doc: dict[str, Any]) -> None:
 
     # tags
     if "tags" in doc:
-        tags = doc["tags"]
-        if not isinstance(tags, dict):
-            raise SchemaValidationError(
-                field="tags",
-                received=tags,
-                reason="'tags' must be an object",
-            )
-        for k, v in tags.items():
-            if not isinstance(k, str) or not k:
-                raise SchemaValidationError(
-                    field=f"tags.{k!r}",
-                    received=k,
-                    reason="tag key must be a non-empty string",
-                )
-            if not isinstance(v, str) or not v:
-                raise SchemaValidationError(
-                    field=f"tags.{k}",
-                    received=v,
-                    reason="tag value must be a non-empty string",
-                )
+        _validate_tags(doc["tags"])
 
 
 # ---------------------------------------------------------------------------

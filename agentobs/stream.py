@@ -215,17 +215,17 @@ class EventStream:
     @classmethod
     async def from_async_iter(
         cls,
-        aiter: AsyncIterator[Event],
-    ) -> EventStream:
+        async_iter: "AsyncIterator[Event]",
+    ) -> "EventStream":
         """Consume an async iterator into an EventStream.
 
         Args:
-            aiter: Any :class:`~typing.AsyncIterator` of events.
+            async_iter: Any :class:`~typing.AsyncIterator` of events.
 
         Returns:
             A new :class:`EventStream`.
         """
-        return cls([event async for event in aiter])
+        return cls([event async for event in async_iter])
 
     @classmethod
     def from_kafka(  # noqa: PLR0913

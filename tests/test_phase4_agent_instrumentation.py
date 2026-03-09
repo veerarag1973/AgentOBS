@@ -76,12 +76,9 @@ class _CapturingExporter:
         self.events.append(event)
 
     def flush(self) -> None:
-        pass
-
+        ...
     def close(self) -> None:
-        pass
-
-
+        ...
 def _install_exporter() -> _CapturingExporter:
     _reset_exporter()
     cap = _CapturingExporter()
@@ -146,19 +143,19 @@ class TestAgentRunContextManager:
 
     def test_emits_agent_completed_event(self) -> None:
         with tracer.agent_run("emit-test"):
-            pass
+            ...
         assert len(self.cap.events) == 1
         assert self.cap.events[0].event_type == EventType.TRACE_AGENT_COMPLETED
 
     def test_completed_payload_has_agent_name(self) -> None:
         with tracer.agent_run("named-agent"):
-            pass
+            ...
         payload = self.cap.events[0].payload
         assert payload["agent_name"] == "named-agent"
 
     def test_status_ok_on_clean_exit(self) -> None:
         with tracer.agent_run("clean-exit"):
-            pass
+            ...
         assert self.cap.events[0].payload["status"] == "ok"
 
     def test_status_error_on_exception(self) -> None:
@@ -170,7 +167,7 @@ class TestAgentRunContextManager:
 
     def test_duration_ms_positive(self) -> None:
         with tracer.agent_run("duration-test"):
-            pass
+            ...
         duration = self.cap.events[0].payload["duration_ms"]
         assert isinstance(duration, float)
         assert duration >= 0.0
@@ -201,8 +198,7 @@ class TestAgentStepContextManager:
     def test_step_outside_run_raises(self) -> None:
         with pytest.raises(RuntimeError, match="agent_run"):
             with tracer.agent_step("orphan"):
-                pass
-
+                ...
     def test_returns_agent_step_context(self) -> None:
         with tracer.agent_run("parent"):
             with tracer.agent_step("step-1") as step:
@@ -239,7 +235,7 @@ class TestAgentStepContextManager:
     def test_step_emits_agent_step_event(self) -> None:
         with tracer.agent_run("run"):
             with tracer.agent_step("step"):
-                pass
+                ...
         # run emits 1 event (COMPLETED), step emits 1 event (STEP)
         step_events = [e for e in self.cap.events if e.event_type == EventType.TRACE_AGENT_STEP]
         assert len(step_events) == 1
@@ -247,7 +243,7 @@ class TestAgentStepContextManager:
     def test_step_status_ok_on_clean_exit(self) -> None:
         with tracer.agent_run("run"):
             with tracer.agent_step("step"):
-                pass
+                ...
         step_event = next(e for e in self.cap.events if e.event_type == EventType.TRACE_AGENT_STEP)
         assert step_event.payload["status"] == "ok"
 
@@ -298,13 +294,13 @@ class TestAgentRunAggregation:
         with tracer.agent_run("agg-test"):
             for i in range(3):
                 with tracer.agent_step(f"s{i}"):
-                    pass
+                    ...
         run_event = next(e for e in self.cap.events if e.event_type == EventType.TRACE_AGENT_COMPLETED)
         assert run_event.payload["total_steps"] == 3
 
     def test_total_steps_zero_when_no_steps(self) -> None:
         with tracer.agent_run("no-steps"):
-            pass
+            ...
         run_payload = next(e for e in self.cap.events if e.event_type == EventType.TRACE_AGENT_COMPLETED).payload
         assert run_payload["total_steps"] == 0
 
@@ -353,7 +349,7 @@ class TestAgentRunAggregation:
     def test_agent_run_id_in_both_events(self) -> None:
         with tracer.agent_run("id-check"):
             with tracer.agent_step("step"):
-                pass
+                ...
         step_event = next(e for e in self.cap.events if e.event_type == EventType.TRACE_AGENT_STEP)
         run_event = next(e for e in self.cap.events if e.event_type == EventType.TRACE_AGENT_COMPLETED)
         assert step_event.payload["agent_run_id"] == run_event.payload["agent_run_id"]
@@ -361,7 +357,7 @@ class TestAgentRunAggregation:
     def test_trace_id_consistent_across_events(self) -> None:
         with tracer.agent_run("trace-check"):
             with tracer.agent_step("s1"):
-                pass
+                ...
         step_event = next(e for e in self.cap.events if e.event_type == EventType.TRACE_AGENT_STEP)
         run_event = next(e for e in self.cap.events if e.event_type == EventType.TRACE_AGENT_COMPLETED)
         assert step_event.payload["trace_id"] == run_event.payload["trace_id"]
@@ -446,8 +442,7 @@ class TestAgentAsyncContextManagers:
         _clean_stacks()
         with pytest.raises(RuntimeError, match="agent_run"):
             async with tracer.agent_step("orphan"):
-                pass
-
+                ...
     async def test_async_run_captures_exception(self) -> None:
         with pytest.raises(ValueError):
             async with tracer.agent_run("async-err"):
@@ -504,7 +499,7 @@ class TestNestedAgentRuns:
     def test_each_run_emits_its_own_completed_event(self) -> None:
         with tracer.agent_run("outer"):
             with tracer.agent_run("inner"):
-                pass
+                ...
         completed = [e for e in self.cap.events if e.event_type == EventType.TRACE_AGENT_COMPLETED]
         assert len(completed) == 2
 
@@ -566,7 +561,7 @@ class TestAgentStepContextData:
     def test_step_custom_operation(self) -> None:
         with tracer.agent_run("run"):
             with tracer.agent_step("s", operation="execute_tool") as step:
-                pass
+                ...
         step_event = next(e for e in self.cap.events if e.event_type == EventType.TRACE_AGENT_STEP)
         assert step_event.payload["operation"] == "execute_tool"
 
@@ -596,7 +591,7 @@ class TestAgentRunPayloadEdgeCases:
 
     def test_termination_reason_none_by_default(self) -> None:
         with tracer.agent_run("run") as run:
-            pass
+            ...
         assert run.termination_reason is None
 
     def test_termination_reason_stored(self) -> None:
@@ -927,7 +922,7 @@ class TestContextManagerExitErrorHandling:
         stream_mod._cached_exporter = bad_exporter
         # Should not propagate the export error
         with tracer.span("llm"):
-            pass
+            ...
         configure(on_export_error="warn")
 
     def test_agent_step_exit_handles_export_error(self) -> None:
@@ -938,7 +933,7 @@ class TestContextManagerExitErrorHandling:
         stream_mod._cached_exporter = bad_exporter
         with tracer.agent_run("run"):
             with tracer.agent_step("step"):
-                pass
+                ...
         configure(on_export_error="warn")
 
     def test_agent_run_exit_handles_export_error(self) -> None:
@@ -948,7 +943,7 @@ class TestContextManagerExitErrorHandling:
         bad_exporter.export.side_effect = RuntimeError("run export blew up")
         stream_mod._cached_exporter = bad_exporter
         with tracer.agent_run("run"):
-            pass
+            ...
         configure(on_export_error="warn")
 
 
@@ -1003,11 +998,10 @@ class TestPhase4EndToEnd:
         """Spans within agent steps share trace_id."""
         with tracer.agent_run("mixed") as run:
             with tracer.span("pre-llm"):
-                pass
+                ...
             with tracer.agent_step("step") as step:
                 with tracer.span("inner-llm"):
-                    pass
-
+                    ...
         trace_ids = {e.payload.get("trace_id") for e in self.cap.events}
         trace_ids.discard(None)
         assert len(trace_ids) == 1

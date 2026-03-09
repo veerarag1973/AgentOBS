@@ -57,6 +57,7 @@ import sys
 from pathlib import Path
 from typing import NoReturn
 
+_NO_EVENTS_MSG = "No events found in file."
 
 def _cmd_check(_args: argparse.Namespace) -> int:
     """Implement the ``check`` sub-command — end-to-end health check."""
@@ -194,24 +195,32 @@ def _cmd_check_compat(args: argparse.Namespace) -> int:
 
 def _cmd_list_deprecated(_args: argparse.Namespace) -> int:
     """Implement the ``list-deprecated`` sub-command."""
-    from agentobs.deprecations import list_deprecated  # noqa: PLC0415
+    try:
+        from agentobs.deprecations import list_deprecated  # noqa: PLC0415
 
-    notices = list_deprecated()
-    if not notices:
-        print("No deprecated event types registered.")
+        notices = list_deprecated()
+        if not notices:
+            print("No deprecated event types registered.")
+            return 0
+
+        print(f"{'Event Type':<50} {'Since':<8} {'Sunset':<8} Replacement")
+        print("-" * 90)
+        for n in notices:
+            repl = n.replacement or "(no replacement)"
+            print(f"{n.event_type:<50} {n.since:<8} {n.sunset:<8} {repl}")
         return 0
-
-    print(f"{'Event Type':<50} {'Since':<8} {'Sunset':<8} Replacement")
-    print("-" * 90)
-    for n in notices:
-        repl = n.replacement or "(no replacement)"
-        print(f"{n.event_type:<50} {n.since:<8} {n.sunset:<8} {repl}")
-    return 0
+    except Exception as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
 
 
 def _cmd_migration_roadmap(args: argparse.Namespace) -> int:
     """Implement the ``migration-roadmap`` sub-command."""
-    from agentobs.migrate import v2_migration_roadmap  # noqa: PLC0415
+    try:
+        from agentobs.migrate import v2_migration_roadmap  # noqa: PLC0415
+    except ImportError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
 
     roadmap = v2_migration_roadmap()
     if not roadmap:
@@ -301,7 +310,7 @@ def _cmd_validate(args: argparse.Namespace) -> int:
 
     rows = _read_jsonl_events(path)
     if not rows:
-        print("No events found in file.")
+        print(_NO_EVENTS_MSG)
         return 0
 
     errors: list[tuple[int, str]] = []
@@ -346,7 +355,7 @@ def _cmd_audit_chain(args: argparse.Namespace) -> int:  # noqa: PLR0911
 
     rows = _read_jsonl_events(path)
     if not rows:
-        print("No events found in file.")
+        print(_NO_EVENTS_MSG)
         return 0
 
     bad_lines = [(ln, exc) for ln, exc in rows if isinstance(exc, Exception)]
@@ -408,7 +417,7 @@ def _cmd_stats(args: argparse.Namespace) -> int:
 
     rows = _read_jsonl_events(path)
     if not rows:
-        print("No events found in file.")
+        print(_NO_EVENTS_MSG)
         return 0
 
     type_counts: dict[str, int] = {}

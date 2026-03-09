@@ -48,6 +48,8 @@ _SCOPE_NAME = "agentobs"
 # Hex-string lengths for W3C TraceContext IDs.
 _TRACE_ID_HEX_LEN = 32
 _SPAN_ID_HEX_LEN = 16
+
+_FINISH_REASONS_KEY = "gen_ai.response.finish_reasons"
 _TRACEPARENT_PARTS_COUNT = 4
 
 
@@ -192,6 +194,29 @@ _STATUS_CODE_OK = 1
 _STATUS_CODE_ERROR = 2
 
 
+def _gen_ai_model_attrs(model: dict[str, Any], attrs: list[dict[str, Any]]) -> None:
+    """Append gen_ai.system / gen_ai.request.model attrs from model dict."""
+    provider = model.get("provider")
+    if provider:
+        attrs.append(_kv("gen_ai.system", str(provider)))
+    name = model.get("name")
+    if name:
+        attrs.append(_kv("gen_ai.request.model", str(name)))
+    version = model.get("version")
+    if version:
+        attrs.append(_kv("gen_ai.request.model_version", str(version)))
+
+
+def _gen_ai_token_attrs(token_usage: dict[str, Any], attrs: list[dict[str, Any]]) -> None:
+    """Append gen_ai usage token attrs from token_usage dict."""
+    prompt_tokens = token_usage.get("prompt_tokens")
+    if prompt_tokens is not None:
+        attrs.append(_kv("gen_ai.usage.input_tokens", int(prompt_tokens)))
+    completion_tokens = token_usage.get("completion_tokens")
+    if completion_tokens is not None:
+        attrs.append(_kv("gen_ai.usage.output_tokens", int(completion_tokens)))
+
+
 def _gen_ai_attributes(event: Event) -> list[dict[str, Any]]:
     """Build ``gen_ai.*`` OpenTelemetry GenAI semantic convention attributes.
 
@@ -209,43 +234,26 @@ def _gen_ai_attributes(event: Event) -> list[dict[str, Any]]:
     attrs: list[dict[str, Any]] = []
     payload = event.payload
 
-    # gen_ai.operation.name — human-readable span label
     span_name = payload.get("span_name")
     if span_name:
         attrs.append(_kv("gen_ai.operation.name", str(span_name)))
 
-    # gen_ai.system / gen_ai.request.model — from nested ModelInfo dict
     model = payload.get("model")
     if isinstance(model, dict):
-        provider = model.get("provider")
-        if provider:
-            attrs.append(_kv("gen_ai.system", str(provider)))
-        name = model.get("name")
-        if name:
-            attrs.append(_kv("gen_ai.request.model", str(name)))
-        version = model.get("version")
-        if version:
-            attrs.append(_kv("gen_ai.request.model_version", str(version)))
+        _gen_ai_model_attrs(model, attrs)
 
-    # gen_ai.usage.input_tokens / gen_ai.usage.output_tokens
     token_usage = payload.get("token_usage")
     if isinstance(token_usage, dict):
-        prompt_tokens = token_usage.get("prompt_tokens")
-        if prompt_tokens is not None:
-            attrs.append(_kv("gen_ai.usage.input_tokens", int(prompt_tokens)))
-        completion_tokens = token_usage.get("completion_tokens")
-        if completion_tokens is not None:
-            attrs.append(_kv("gen_ai.usage.output_tokens", int(completion_tokens)))
+        _gen_ai_token_attrs(token_usage, attrs)
 
-    # gen_ai.response.finish_reasons — derived from status / error presence
     status = payload.get("status")
     error = payload.get("error")
     if status == "error" or error:
-        attrs.append(_kv("gen_ai.response.finish_reasons", "error"))
+        attrs.append(_kv(_FINISH_REASONS_KEY, "error"))
     elif status == "timeout":
-        attrs.append(_kv("gen_ai.response.finish_reasons", "timeout"))
+        attrs.append(_kv(_FINISH_REASONS_KEY, "timeout"))
     elif status == "ok":
-        attrs.append(_kv("gen_ai.response.finish_reasons", "stop"))
+        attrs.append(_kv(_FINISH_REASONS_KEY, "stop"))
 
     return attrs
 
