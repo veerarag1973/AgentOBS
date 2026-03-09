@@ -105,7 +105,7 @@ class TestToolCallRecord:
         assert r.name == "get_weather"
         assert r.args == {"city": "London"}
         assert r.result == "sunny, 22°C"
-        assert r.duration_ms == 35.7
+        assert r.duration_ms == pytest.approx(35.7)
         assert r.was_result_used is None
 
     def test_frozen(self):
@@ -291,7 +291,7 @@ class TestInspectorSessionCapture:
         s = _tool_span()
         s.duration_ms = 99.9
         self._fire_span(session, s)
-        assert session.tool_calls[0].duration_ms == 99.9
+        assert session.tool_calls[0].duration_ms == pytest.approx(99.9)
 
     def test_status_error(self):
         session = InspectorSession()
@@ -817,7 +817,7 @@ class TestInspectTrace:
         p = tmp_path / "events.jsonl"
         _write_event_jsonl(p, [_tool_event(duration_ms=88.8)])
         records = inspect_trace(str(p))
-        assert records[0].duration_ms == 88.8
+        assert records[0].duration_ms == pytest.approx(88.8)
 
     def test_status_and_error(self, tmp_path: Path):
         p = tmp_path / "events.jsonl"

@@ -735,7 +735,7 @@ class TestEndToEnd:
         assert anthropic_tools[0]["name"] == "multiply"
 
         # Runtime call
-        assert reg.call("multiply", {"x": 3.0, "y": 4.0}) == 12.0
+        assert reg.call("multiply", {"x": 3.0, "y": 4.0}) == pytest.approx(12.0)
 
     def test_optional_params_not_in_required(self):
         reg = _make_registry()
