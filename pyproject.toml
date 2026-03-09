@@ -7,7 +7,7 @@ build-backend = "hatchling.build"
 # ---------------------------------------------------------------------------
 [project]
 name = "agentobs"
-version = "1.0.6"
+version = "1.0.7"
 description = "AgentOBS — reference implementation of RFC-0001 AGENTOBS, the Observability Schema Standard for Agentic AI Systems"
 readme = "README.md"
 license = { text = "MIT" }

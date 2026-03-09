@@ -6,7 +6,45 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## 1.0.7 — 2026-03-09
+
+**Code-Quality Audit — SonarCloud Maintainability Fixes**
+
+All changes are internal; no public API was added, changed, or removed.
+
+### Changed
+
+- **`agentobs/_stream.py`** — broad `except Exception` at the export-error
+  handler is intentional and tested; annotated with `# NOSONAR` to suppress
+  static-analysis false-positive.
+- **`agentobs/event.py`** — `Event.__init__` with 17 parameters is required
+  by the schema; annotated with `# noqa: PLR0913  # NOSONAR`.
+- **`agentobs/export/datadog.py`** — removed leftover inline comment that
+  SonarCloud flagged as commented-out code.
+- **Tests** — resolved all 36 SonarCloud maintainability findings across
+  `test_phase6_openai_integration.py`, `test_sdk_coverage_boost.py`,
+  `test_sdk_openai_integration.py`, `test_sdk_phase7_integrations.py`,
+  `test_signing.py`, `test_stream.py`, `test_ulid.py`, `test_validate.py`:
+  - Replaced `list(sys.modules)` snapshot anti-pattern with list
+    comprehensions.
+  - Renamed uppercase local variables (`Completions`, `AsyncCompletions`) to
+    lowercase (`completions_cls`, `async_completions_cls`).
+  - Replaced unused variable bindings with `_`.
+  - Changed `[:2] == "20"` prefix checks to `.startswith("20")`.
+  - Deduplicated `test_construction_valid` test method name.
+  - Removed orphaned `teardown_method` override.
+  - Added `# NOSONAR` on lines where intentional wrong-type arguments test
+    defensive validation logic.
+
+### Test suite
+
+- **2 560 tests collected** (2 518 passing, 42 skipped), ≥ 94 % line and
+  branch coverage.
+
+---
+
 ## 1.0.6 — 2026-03-07
+
 
 **Architect Review — Developer Experience & Reliability Improvements**
 

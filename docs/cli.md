@@ -14,6 +14,7 @@ agentobs command-line utilities
 
 positional arguments:
   <command>
+    check             End-to-end health check: config, event creation, export pipeline, trace store
     check-compat      Check a JSON file of events against the v1.0 compatibility checklist
     validate          Validate every event in a JSONL file against the published schema
     audit-chain       Verify HMAC signing chain integrity of events in a JSONL file
@@ -25,6 +26,41 @@ positional arguments:
 
 options:
   -h, --help          show this help message and exit
+```
+
+## `check`
+
+Runs a five-step end-to-end health check of the AgentOBS installation:
+
+1. Configuration loaded and valid
+2. An `Event` can be created with required fields
+3. The event passes JSON Schema validation
+4. The export pipeline initialises and accepts the test event
+5. The `TraceStore` is accessible
+
+**Usage**
+
+```bash
+agentobs check
+```
+
+**Exit codes**
+
+| Code | Meaning |
+|------|---------|
+| `0` | All five steps passed. |
+| `1` | One or more steps failed (details printed to stdout). |
+
+**Example — passing**
+
+```bash
+$ agentobs check
+[1/5] Config ............. OK
+[2/5] Event creation ..... OK
+[3/5] Schema validation .. OK
+[4/5] Export pipeline .... OK
+[5/5] Trace store ........ OK
+All checks passed.
 ```
 
 ## `check-compat`

@@ -1,7 +1,7 @@
 # Documentation Index
 
 > **AgentOBS** (`agentobs`) — The reference implementation of the [AGENTOBS Standard](https://www.getspanforge.com/standard) (RFC-0001), the open event-schema standard for observability of agentic AI systems.  
-> Current release: **2.0.0** — [Changelog](changelog.md) · [![PyPI](https://img.shields.io/pypi/v/agentobs?color=4c8cbf&logo=pypi&logoColor=white)](https://pypi.org/project/agentobs/)
+> Current release: **1.0.7** — [Changelog](changelog.md) · [![PyPI](https://img.shields.io/pypi/v/agentobs?color=4c8cbf&logo=pypi&logoColor=white)](https://pypi.org/project/agentobs/)
 
 This index links to every documentation page in this folder.
 
@@ -56,7 +56,9 @@ This index links to every documentation page in this folder.
 | [debug](api/debug.md) | `agentobs.debug` — `print_tree()`, `summary()`, `visualize()` |
 | [metrics](api/metrics.md) | `agentobs.metrics` — `aggregate()`, `MetricsSummary`, `LatencyStats` |
 | [store](api/store.md) | `agentobs._store` — `TraceStore` and MCP trace access functions |
-| [hooks](api/hooks.md) | `agentobs._hooks` — `HookRegistry`, `hooks` singleton |
+| [hooks](api/hooks.md) | `agentobs._hooks` — `HookRegistry`, `hooks` singleton, sync and async lifecycle hooks |
+| [testing](api/testing.md) | `agentobs.testing` — `MockExporter`, `capture_events()`, `assert_event_schema_valid()`, `trace_store()` |
+| [auto](api/auto.md) | `agentobs.auto` — `setup()` / `teardown()` integration auto-discovery |
 | [ulid](api/ulid.md) | `agentobs.ulid` — ULID generation and helpers |
 | [exceptions](api/exceptions.md) | `agentobs.exceptions` — Exception hierarchy |
 | [models](api/models.md) | `agentobs.models` — Pydantic v2 model layer |

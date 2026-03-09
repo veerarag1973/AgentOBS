@@ -329,7 +329,7 @@ from agentobs.ulid import generate as generate_ulid
 from agentobs.ulid import validate as validate_ulid
 from agentobs.validate import validate_event
 
-__version__: str = "1.0.6"
+__version__: str = "1.0.7"
 
 # Optional sub-modules — import on demand to keep startup cost zero.
 import agentobs.testing as testing  # noqa: E402
