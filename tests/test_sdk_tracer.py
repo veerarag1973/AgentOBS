@@ -66,7 +66,7 @@ class TestTracerSpan:
     def test_set_attribute_inside_span(self) -> None:
         with tracer.span("span") as span:
             span.set_attribute("temperature", 0.9)
-        assert span.attributes["temperature"] == 0.9
+        assert span.attributes["temperature"] == pytest.approx(0.9)
 
     def test_nested_spans_share_trace_id(self) -> None:
         with tracer.span("outer") as outer, tracer.span("inner") as inner:

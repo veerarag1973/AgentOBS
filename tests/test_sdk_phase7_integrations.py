@@ -70,7 +70,7 @@ def _inject_fake_anthropic() -> None:
             return MagicMock()
 
     class AsyncMessages:
-        async def create(self, *args: Any, **kwargs: Any) -> Any:  # pragma: no cover
+        async def create(self, *args: Any, **kwargs: Any) -> Any:  # pragma: no cover  # NOSONAR
             return MagicMock()
 
     messages_mod.Messages = Messages  # type: ignore[attr-defined]
@@ -330,7 +330,7 @@ def _inject_fake_ollama() -> None:
             return {}
 
     class AsyncClient:
-        async def chat(self, *args: Any, **kwargs: Any) -> Any:  # pragma: no cover
+        async def chat(self, *args: Any, **kwargs: Any) -> Any:  # pragma: no cover  # NOSONAR
             return {}
 
     mod.chat = chat  # type: ignore[attr-defined]
@@ -392,7 +392,7 @@ class TestOllamaNormalizeResponse:
         resp = _make_ollama_response(model="phi3", prompt_eval_count=999, eval_count=999)
         _, _, cost = normalize_response(resp)
         assert cost == CostBreakdown.zero()
-        assert cost.total_cost_usd == 0.0
+        assert cost.total_cost_usd == pytest.approx(0.0)
 
     def test_missing_fields_default_zero(self) -> None:
         """Response with no token count fields → zeros, not exceptions."""
@@ -498,7 +498,7 @@ def _inject_fake_groq() -> None:
             return MagicMock()
 
     class AsyncCompletions:
-        async def create(self, *args: Any, **kwargs: Any) -> Any:  # pragma: no cover
+        async def create(self, *args: Any, **kwargs: Any) -> Any:  # pragma: no cover  # NOSONAR
             return MagicMock()
 
     completions_mod.Completions = Completions  # type: ignore[attr-defined]
@@ -755,7 +755,7 @@ def _inject_fake_together() -> None:
             return MagicMock()
 
     class AsyncCompletions:
-        async def create(self, *args: Any, **kwargs: Any) -> Any:  # pragma: no cover
+        async def create(self, *args: Any, **kwargs: Any) -> Any:  # pragma: no cover  # NOSONAR
             return MagicMock()
 
     completions_mod.Completions = Completions  # type: ignore[attr-defined]

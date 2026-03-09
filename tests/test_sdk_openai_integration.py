@@ -88,8 +88,8 @@ class TestPricingTable:
 
         p = get_pricing("gpt-4o")
         assert p is not None
-        assert p["input"] == 2.50
-        assert p["output"] == 10.00
+        assert p["input"] == pytest.approx(2.50)
+        assert p["output"] == pytest.approx(10.00)
 
     def test_get_pricing_unknown_returns_none(self) -> None:
         from agentobs.integrations._pricing import get_pricing  # noqa: PLC0415
@@ -102,7 +102,7 @@ class TestPricingTable:
         p = get_pricing("gpt-4o-mini")
         assert p is not None
         assert "cached_input" in p
-        assert p["cached_input"] == 0.075
+        assert p["cached_input"] == pytest.approx(0.075)
 
     def test_get_pricing_o1_has_reasoning(self) -> None:
         from agentobs.integrations._pricing import get_pricing  # noqa: PLC0415
@@ -116,7 +116,7 @@ class TestPricingTable:
 
         p = get_pricing("text-embedding-3-small")
         assert p is not None
-        assert p["output"] == 0.0
+        assert p["output"] == pytest.approx(0.0)
 
     def test_list_models_returns_sorted_list(self) -> None:
         from agentobs.integrations._pricing import list_models  # noqa: PLC0415
@@ -202,8 +202,8 @@ class TestNormalizeResponse:
         resp = _make_response(model="unknown-future-model-v99")
         _, _, cost = normalize_response(resp)
 
-        assert cost.total_cost_usd == 0.0
-        assert cost.input_cost_usd == 0.0
+        assert cost.total_cost_usd == pytest.approx(0.0)
+        assert cost.input_cost_usd == pytest.approx(0.0)
 
     def test_null_usage_gives_zero_tokens(self) -> None:
         from agentobs.integrations.openai import normalize_response  # noqa: PLC0415
@@ -215,7 +215,7 @@ class TestNormalizeResponse:
 
         assert token_usage.input_tokens == 0
         assert token_usage.output_tokens == 0
-        assert cost.total_cost_usd == 0.0
+        assert cost.total_cost_usd == pytest.approx(0.0)
 
     def test_missing_model_uses_unknown(self) -> None:
         from agentobs.integrations.openai import normalize_response  # noqa: PLC0415
@@ -303,13 +303,13 @@ class TestComputeCost:
         from agentobs.integrations.openai import _compute_cost  # noqa: PLC0415
 
         cost = _compute_cost("gpt-4o", 0, 0, None, None)
-        assert cost.total_cost_usd == 0.0
+        assert cost.total_cost_usd == pytest.approx(0.0)
 
     def test_unknown_model_zero_cost(self) -> None:
         from agentobs.integrations.openai import _compute_cost  # noqa: PLC0415
 
         cost = _compute_cost("my-internal-llm", 1000, 500, None, None)
-        assert cost.total_cost_usd == 0.0
+        assert cost.total_cost_usd == pytest.approx(0.0)
 
     def test_cached_discount_reduces_cost(self) -> None:
         from agentobs.integrations.openai import _compute_cost  # noqa: PLC0415
@@ -359,7 +359,7 @@ def _build_mock_openai() -> types.ModuleType:
     def _sync_create(*args: Any, **kwargs: Any) -> Any:
         return _make_response()
 
-    async def _async_create(*args: Any, **kwargs: Any) -> Any:
+    async def _async_create(*args: Any, **kwargs: Any) -> Any:  # NOSONAR
         return _make_response()
 
     # Completions class (sync)
@@ -616,7 +616,7 @@ class TestPricingFallback:
             # This should fall back to "test-base-model" via prefix stripping
             result = get_pricing("test-base-model-2099-01-01")
             assert result is not None
-            assert result["input"] == 1.0
+            assert result["input"] == pytest.approx(1.0)
         finally:
             del OPENAI_PRICING["test-base-model"]
 
@@ -668,7 +668,7 @@ class TestPatchedMethodInvocation:
         AsyncCompletions = completions_mod.AsyncCompletions  # noqa: N806
 
         async def _run() -> None:
-            with SpanContextManager("async-test") as span:
+            async with SpanContextManager("async-test") as span:
                 await AsyncCompletions.create(None)
                 assert span.token_usage is not None
 

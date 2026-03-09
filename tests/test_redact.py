@@ -67,7 +67,7 @@ class TestSensitivity:
         assert Sensitivity.PII < Sensitivity.PHI
 
     def test_ordering_le(self) -> None:
-        assert Sensitivity.LOW <= Sensitivity.LOW
+        assert Sensitivity.LOW <= Sensitivity.LOW  # NOSONAR
         assert Sensitivity.LOW <= Sensitivity.PII
 
     def test_ordering_gt(self) -> None:
@@ -75,7 +75,7 @@ class TestSensitivity:
         assert Sensitivity.PII > Sensitivity.LOW
 
     def test_ordering_ge(self) -> None:
-        assert Sensitivity.PHI >= Sensitivity.PHI
+        assert Sensitivity.PHI >= Sensitivity.PHI  # NOSONAR
         assert Sensitivity.PHI >= Sensitivity.LOW
 
     def test_lt_non_sensitivity_returns_not_implemented(self) -> None:
@@ -99,7 +99,7 @@ class TestSensitivity:
         assert Sensitivity.PII == "pii"
 
     def test_eq_with_same_sensitivity(self) -> None:
-        assert Sensitivity.PII == Sensitivity.PII
+        assert Sensitivity.PII == Sensitivity.PII  # NOSONAR
 
     def test_eq_with_different_sensitivity(self) -> None:
         assert Sensitivity.PII != Sensitivity.PHI

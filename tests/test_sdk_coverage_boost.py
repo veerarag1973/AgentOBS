@@ -243,12 +243,12 @@ class TestPricingTierFull:
     def test_cached_input_optional_in_to_dict(self) -> None:
         pt = self._base(cached_input_per_million_usd=2.5)
         d = pt.to_dict()
-        assert d["cached_input_per_million_usd"] == 2.5
+        assert d["cached_input_per_million_usd"] == pytest.approx(2.5)
 
     def test_reasoning_optional_in_to_dict(self) -> None:
         pt = self._base(reasoning_per_million_usd=10.0)
         d = pt.to_dict()
-        assert d["reasoning_per_million_usd"] == 10.0
+        assert d["reasoning_per_million_usd"] == pytest.approx(10.0)
 
     def test_unknown_system_fallback_in_from_dict(self) -> None:
         d = {
@@ -280,7 +280,7 @@ class TestToolCallFull:
         d = tc.to_dict()
         assert d["arguments_hash"] == _SHA256
         assert d["error_type"] == "TimeoutError"
-        assert d["duration_ms"] == 42.5
+        assert d["duration_ms"] == pytest.approx(42.5)
 
     def test_from_dict_roundtrip_with_optionals(self) -> None:
         tc = ToolCall(
@@ -290,7 +290,7 @@ class TestToolCallFull:
             duration_ms=100.0,
         )
         tc2 = ToolCall.from_dict(tc.to_dict())
-        assert tc2.duration_ms == 100.0
+        assert tc2.duration_ms == pytest.approx(100.0)
         assert tc2.arguments_hash is None
 
     def test_invalid_arguments_hash_raises(self) -> None:
@@ -326,13 +326,13 @@ class TestReasoningStepFull:
             content_hash=_SHA256,
         )
         d = rs.to_dict()
-        assert d["duration_ms"] == 12.5
+        assert d["duration_ms"] == pytest.approx(12.5)
         assert d["content_hash"] == _SHA256
 
     def test_from_dict_roundtrip_with_optionals(self) -> None:
         rs = ReasoningStep(step_index=0, reasoning_tokens=50, duration_ms=10.0)
         rs2 = ReasoningStep.from_dict(rs.to_dict())
-        assert rs2.duration_ms == 10.0
+        assert rs2.duration_ms == pytest.approx(10.0)
         assert rs2.content_hash is None
 
     def test_invalid_content_hash_raises(self) -> None:
@@ -757,9 +757,9 @@ class TestEvalNamespaceFull:
             model=_model(),
         )
         d = p.to_dict()
-        assert d["score_min"] == 0.0
-        assert d["score_max"] == 1.0
-        assert d["threshold"] == 0.8
+        assert d["score_min"] == pytest.approx(0.0)
+        assert d["score_max"] == pytest.approx(1.0)
+        assert d["threshold"] == pytest.approx(0.8)
         assert d["passed"] is True
         assert "model" in d
 
@@ -883,13 +883,13 @@ class TestGuardNamespaceFull:
             content_hash=_SHA256,
         )
         d = p.to_dict()
-        assert d["score_min"] == 0.0
-        assert d["score_max"] == 1.0
-        assert d["threshold"] == 0.5
+        assert d["score_min"] == pytest.approx(0.0)
+        assert d["score_max"] == pytest.approx(1.0)
+        assert d["threshold"] == pytest.approx(0.5)
         assert d["categories"] == ["hate", "violence"]
         assert d["triggered_categories"] == ["violence"]
         assert d["span_id"] == _SPAN_ID
-        assert d["latency_ms"] == 12.5
+        assert d["latency_ms"] == pytest.approx(12.5)
         assert d["policy_id"] == "policy-v1"
         assert d["content_hash"] == _SHA256
 

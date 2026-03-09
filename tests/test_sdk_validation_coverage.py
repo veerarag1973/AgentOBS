@@ -436,7 +436,7 @@ class TestDiffRegressionFlagged:
         )
         d = p.to_dict()
         assert d["diff_type"] == "prompt"
-        assert d["similarity_score"] == 0.6
+        assert d["similarity_score"] == pytest.approx(0.6)
         assert d["severity"] == "high"
 
     def test_with_optional_fields(self) -> None:

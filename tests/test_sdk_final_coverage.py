@@ -66,9 +66,9 @@ def _cost_bd() -> CostBreakdown:
 class TestCostBreakdownZero:
     def test_zero_returns_zeroed_instance(self) -> None:
         z = CostBreakdown.zero()
-        assert z.input_cost_usd == 0.0
-        assert z.output_cost_usd == 0.0
-        assert z.total_cost_usd == 0.0
+        assert z.input_cost_usd == pytest.approx(0.0)
+        assert z.output_cost_usd == pytest.approx(0.0)
+        assert z.total_cost_usd == pytest.approx(0.0)
 
     def test_zero_is_costbreakdown(self) -> None:
         z = CostBreakdown.zero()
@@ -295,7 +295,7 @@ class TestCachePayloadValidation:
         d = p.to_dict()
         assert "model" in d
         assert d["response_token_count"] == 150
-        assert d["write_duration_ms"] == 2.5
+        assert d["write_duration_ms"] == pytest.approx(2.5)
 
     def test_cache_written_invalid_ttl_raises(self) -> None:
         from agentobs.namespaces.cache import CacheWrittenPayload  # noqa: PLC0415
@@ -338,7 +338,7 @@ class TestCostPayloadValidation:
             models_used=["gpt-4o", "claude-3-5-sonnet"],
         )
         d = p.to_dict()
-        assert d["session_duration_ms"] == 5000.0
+        assert d["session_duration_ms"] == pytest.approx(5000.0)
         assert "models_used" in d
 
     def test_attributed_empty_target_raises(self) -> None:

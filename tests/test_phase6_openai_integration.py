@@ -755,7 +755,7 @@ class TestPatchedMethodInvocation:
         AsyncCompletions = sys.modules["openai.resources.chat.completions"].AsyncCompletions
 
         async def _run() -> None:
-            with SpanContextManager("async-test") as span:
+            async with SpanContextManager("async-test") as span:
                 await AsyncCompletions.create(None)
                 assert span.token_usage is not None
 

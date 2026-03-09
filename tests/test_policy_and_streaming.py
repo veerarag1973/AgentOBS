@@ -320,7 +320,7 @@ class TestTemplatePolicy:
         policy = TemplatePolicy("t", [])
         result = policy.validate_output("x", render_duration_ms=12.5)
         assert isinstance(result, TemplateRenderedPayload)
-        assert result.render_duration_ms == 12.5
+        assert result.render_duration_ms == pytest.approx(12.5)
 
     def test_constructor_rejects_empty_template_id(self) -> None:
         with pytest.raises(ValueError, match="template_id"):
@@ -414,7 +414,10 @@ class TestAiterFile:
         f.write_text(content, encoding="utf-8")
 
         async def _run():
-            return [e async for e in aiter_file(f)]
+            result = []
+            async for e in aiter_file(f):
+                result.append(e)
+            return result
 
         assert asyncio.run(_run()) == [event]
 
@@ -435,7 +438,10 @@ class TestAiterFile:
         f.write_text(content, encoding="utf-8")
 
         async def _run():
-            return [e async for e in aiter_file(f, skip_errors=True)]
+            result = []
+            async for e in aiter_file(f, skip_errors=True):
+                result.append(e)
+            return result
 
         assert asyncio.run(_run()) == [good]
 
@@ -444,7 +450,10 @@ class TestAiterFile:
         f.write_text("", encoding="utf-8")
 
         async def _run():
-            return [e async for e in aiter_file(f)]
+            result = []
+            async for e in aiter_file(f):
+                result.append(e)
+            return result
 
         assert asyncio.run(_run()) == []
 

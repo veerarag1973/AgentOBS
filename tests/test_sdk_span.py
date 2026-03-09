@@ -94,7 +94,7 @@ class TestSpan:
     def test_set_attribute_stores_value(self) -> None:
         span = _make_span()
         span.set_attribute("temperature", 0.7)
-        assert span.attributes["temperature"] == 0.7
+        assert span.attributes["temperature"] == pytest.approx(0.7)
 
     def test_set_attribute_overrides_existing(self) -> None:
         span = _make_span()

@@ -58,7 +58,7 @@ class _MockExporter:
     def __init__(self) -> None:
         self.received: list[Event] = []
 
-    async def export_batch(self, events: Sequence[Event]) -> int:
+    async def export_batch(self, events: Sequence[Event]) -> int:  # NOSONAR
         self.received.extend(events)
         return len(events)
 
@@ -273,7 +273,7 @@ class TestFromAsyncIter:
     def test_empty_async_iterator(self) -> None:
         async def _empty():
             return
-            yield  # make it a generator
+            yield  # make it a generator  # NOSONAR
 
         async def _run() -> EventStream:
             return await EventStream.from_async_iter(_empty())
