@@ -21,8 +21,8 @@ config changes (call :func:`_reset_exporter` after ``configure()``).
 from __future__ import annotations
 
 import logging
-import random
 import re
+import secrets
 import threading
 import time
 import warnings
@@ -309,7 +309,10 @@ def _passes_sample_rate(event: "Event", sample_rate: float) -> bool:
         except ValueError:
             bucket = 0
         return bucket / 0xFFFF_FFFF <= sample_rate
-    return random.random() <= sample_rate
+    # No trace_id — use cryptographically secure random fallback
+    rand_token = secrets.token_hex(4)  # 8 hex chars = 32-bit random value
+    bucket = int(rand_token, 16)
+    return bucket / 0xFFFF_FFFF <= sample_rate
 
 
 def _should_emit(event: "Event", cfg: "AgentOBSConfig") -> bool:
