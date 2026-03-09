@@ -397,7 +397,7 @@ class TestSpanInsideAgentRun:
         is None.  The trace_id is still inherited from the enclosing run.
         """
         with tracer.agent_run("run") as run:
-            with tracer.agent_step("step") as step:
+            with tracer.agent_step("step"):
                 with tracer.span("llm") as span:
                     assert span.parent_span_id is None
                     assert span.trace_id == run.trace_id
@@ -560,7 +560,7 @@ class TestAgentStepContextData:
 
     def test_step_custom_operation(self) -> None:
         with tracer.agent_run("run"):
-            with tracer.agent_step("s", operation="execute_tool") as step:
+            with tracer.agent_step("s", operation="execute_tool"):
                 ...
         step_event = next(e for e in self.cap.events if e.event_type == EventType.TRACE_AGENT_STEP)
         assert step_event.payload["operation"] == "execute_tool"
@@ -743,13 +743,15 @@ class TestResetExporterErrorHandling:
 
 @pytest.mark.unit
 class TestActiveExporterCaching:
-    def setup_method(self) -> None:
+    def _reset_to_default(self) -> None:
         _reset_exporter()
         configure(exporter="console")
 
+    def setup_method(self) -> None:
+        self._reset_to_default()
+
     def teardown_method(self) -> None:
-        _reset_exporter()
-        configure(exporter="console")
+        self._reset_to_default()
 
     def test_exporter_cached_after_first_call(self) -> None:
         from agentobs._stream import _active_exporter
@@ -964,7 +966,7 @@ class TestPhase4EndToEnd:
 
     def test_research_agent_scenario(self) -> None:
         """Full research agent: run + 2 search steps + summarize step."""
-        with tracer.agent_run("research-agent") as run:
+        with tracer.agent_run("research-agent"):
             with tracer.agent_step("web-search") as s1:
                 s1.set_attribute("query", "what is RAG?")
                 s1.token_usage = _token_usage(50)
@@ -996,10 +998,10 @@ class TestPhase4EndToEnd:
 
     def test_span_and_agent_interleaved(self) -> None:
         """Spans within agent steps share trace_id."""
-        with tracer.agent_run("mixed") as run:
+        with tracer.agent_run("mixed"):
             with tracer.span("pre-llm"):
                 ...
-            with tracer.agent_step("step") as step:
+            with tracer.agent_step("step"):
                 with tracer.span("inner-llm"):
                     ...
         trace_ids = {e.payload.get("trace_id") for e in self.cap.events}

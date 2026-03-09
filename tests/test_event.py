@@ -614,7 +614,7 @@ class TestEventDeserialization:
 
     def test_from_dict_not_a_dict(self) -> None:
         with pytest.raises(DeserializationError, match="expected a JSON object"):
-            Event.from_dict(["not", "a", "dict"])  # type: ignore[arg-type]
+            Event.from_dict(["not", "a", "dict"])  # type: ignore[arg-type]  # NOSONAR — intentional wrong-type test
 
     def test_from_dict_payload_not_dict(
         self, minimal_event_kwargs: dict[str, Any]

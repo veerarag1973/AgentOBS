@@ -359,10 +359,6 @@ class DatadogExporter:
             )
         return series
 
-    # ------------------------------------------------------------------
-    # Async export API
-    # ------------------------------------------------------------------
-
     async def export(self, event: Event) -> None:
         """Export a single event to Datadog.
 

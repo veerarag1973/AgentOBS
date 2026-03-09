@@ -91,19 +91,19 @@ def _build_mock_openai() -> types.ModuleType:
     def _sync_create(*args: Any, **kwargs: Any) -> Any:
         return _make_response()
 
-    async def _async_create(*args: Any, **kwargs: Any) -> Any:
+    async def _async_create(*args: Any, **kwargs: Any) -> Any:  # NOSONAR — intentional sync stub in async wrapper
         return _make_response()
 
-    Completions = MagicMock()
-    Completions.create = _sync_create
-    AsyncCompletions = MagicMock()
-    AsyncCompletions.create = _async_create
+    completions_cls = MagicMock()
+    completions_cls.create = _sync_create
+    async_completions_cls = MagicMock()
+    async_completions_cls.create = _async_create
 
     resources_mod = types.ModuleType("openai.resources")
     chat_mod = types.ModuleType("openai.resources.chat")
     completions_mod = types.ModuleType("openai.resources.chat.completions")
-    completions_mod.Completions = Completions
-    completions_mod.AsyncCompletions = AsyncCompletions
+    completions_mod.Completions = completions_cls
+    completions_mod.AsyncCompletions = async_completions_cls
 
     sys.modules["openai"] = openai_mod
     sys.modules["openai.resources"] = resources_mod
@@ -114,9 +114,9 @@ def _build_mock_openai() -> types.ModuleType:
 
 
 def _uninstall_mock_openai() -> None:
-    for key in list(sys.modules):
-        if key == "openai" or key.startswith("openai."):
-            del sys.modules[key]
+    keys = [k for k in sys.modules if k == "openai" or k.startswith("openai.")]
+    for key in keys:
+        del sys.modules[key]
 
 
 # ===========================================================================
@@ -147,18 +147,18 @@ class TestPricingTable:
 
         p = get_pricing("gpt-4o")
         assert p is not None
-        assert p["input"] == 2.50
-        assert p["output"] == 10.00
-        assert p["cached_input"] == 1.25
+        assert p["input"] == pytest.approx(2.50)
+        assert p["output"] == pytest.approx(10.00)
+        assert p["cached_input"] == pytest.approx(1.25)
 
     def test_gpt4o_mini_pricing_values(self) -> None:
         from agentobs.integrations._pricing import get_pricing
 
         p = get_pricing("gpt-4o-mini")
         assert p is not None
-        assert p["input"] == 0.15
-        assert p["output"] == 0.60
-        assert p["cached_input"] == 0.075
+        assert p["input"] == pytest.approx(0.15)
+        assert p["output"] == pytest.approx(0.60)
+        assert p["cached_input"] == pytest.approx(0.075)
 
     def test_o1_has_reasoning_rate(self) -> None:
         from agentobs.integrations._pricing import get_pricing
@@ -166,40 +166,40 @@ class TestPricingTable:
         p = get_pricing("o1")
         assert p is not None
         assert "reasoning" in p
-        assert p["reasoning"] == 60.00
+        assert p["reasoning"] == pytest.approx(60.00)
 
     def test_o3_mini_pricing(self) -> None:
         from agentobs.integrations._pricing import get_pricing
 
         p = get_pricing("o3-mini")
         assert p is not None
-        assert p["input"] == 1.10
-        assert p["output"] == 4.40
-        assert p["cached_input"] == 0.55
+        assert p["input"] == pytest.approx(1.10)
+        assert p["output"] == pytest.approx(4.40)
+        assert p["cached_input"] == pytest.approx(0.55)
 
     def test_o3_pricing(self) -> None:
         from agentobs.integrations._pricing import get_pricing
 
         p = get_pricing("o3")
         assert p is not None
-        assert p["input"] == 10.00
-        assert p["output"] == 40.00
+        assert p["input"] == pytest.approx(10.00)
+        assert p["output"] == pytest.approx(40.00)
 
     def test_gpt4_base_pricing(self) -> None:
         from agentobs.integrations._pricing import get_pricing
 
         p = get_pricing("gpt-4")
         assert p is not None
-        assert p["input"] == 30.00
-        assert p["output"] == 60.00
+        assert p["input"] == pytest.approx(30.00)
+        assert p["output"] == pytest.approx(60.00)
 
     def test_gpt35_turbo_pricing(self) -> None:
         from agentobs.integrations._pricing import get_pricing
 
         p = get_pricing("gpt-3.5-turbo")
         assert p is not None
-        assert p["input"] == 0.50
-        assert p["output"] == 1.50
+        assert p["input"] == pytest.approx(0.50)
+        assert p["output"] == pytest.approx(1.50)
 
     def test_embedding_zero_output_cost(self) -> None:
         from agentobs.integrations._pricing import get_pricing
@@ -207,7 +207,7 @@ class TestPricingTable:
         for model in ("text-embedding-3-small", "text-embedding-3-large", "text-embedding-ada-002"):
             p = get_pricing(model)
             assert p is not None, f"{model} not in pricing"
-            assert p["output"] == 0.00, f"{model}.output should be 0"
+            assert p["output"] == pytest.approx(0.00), f"{model}.output should be 0"
 
     def test_get_pricing_unknown_model_returns_none(self) -> None:
         from agentobs.integrations._pricing import get_pricing
@@ -221,7 +221,7 @@ class TestPricingTable:
         # "gpt-4o-2024-11-20" should match exactly (not via prefix strip)
         p = get_pricing("gpt-4o-2024-11-20")
         assert p is not None
-        assert p["input"] == 2.50
+        assert p["input"] == pytest.approx(2.50)
 
     def test_get_pricing_strips_one_date_suffix(self) -> None:
         """Model name with extra date suffix falls back to base name."""
@@ -231,7 +231,7 @@ class TestPricingTable:
         try:
             result = get_pricing("test-strip-model-2077-06-15")
             assert result is not None
-            assert result["input"] == 9.99
+            assert result["input"] == pytest.approx(9.99)
         finally:
             del OPENAI_PRICING["test-strip-model"]
 
@@ -337,7 +337,7 @@ class TestNormalizeResponse:
         assert tu.input_tokens == 0
         assert tu.output_tokens == 0
         assert tu.total_tokens == 0
-        assert cost.total_cost_usd == 0.0
+        assert cost.total_cost_usd == pytest.approx(0.0)
 
     def test_cached_tokens_extracted(self) -> None:
         from agentobs.integrations.openai import normalize_response
@@ -384,9 +384,9 @@ class TestNormalizeResponse:
 
         resp = _make_response(model="hypothetical-model-v99")
         _, _, cost = normalize_response(resp)
-        assert cost.total_cost_usd == 0.0
-        assert cost.input_cost_usd == 0.0
-        assert cost.output_cost_usd == 0.0
+        assert cost.total_cost_usd == pytest.approx(0.0)
+        assert cost.input_cost_usd == pytest.approx(0.0)
+        assert cost.output_cost_usd == pytest.approx(0.0)
 
     def test_cost_breakdown_round_trip(self) -> None:
         from agentobs.integrations.openai import normalize_response
@@ -426,7 +426,7 @@ class TestNormalizeResponse:
                               prompt_tokens=1_000_000, completion_tokens=0,
                               total_tokens=1_000_000)
         _, _, cost = normalize_response(resp)
-        assert cost.output_cost_usd == 0.0
+        assert cost.output_cost_usd == pytest.approx(0.0)
         assert abs(cost.input_cost_usd - 0.02) < 1e-6
 
     def test_total_tokens_stored_verbatim(self) -> None:
@@ -461,15 +461,15 @@ class TestComputeCost:
         from agentobs.integrations.openai import _compute_cost
 
         cost = _compute_cost("gpt-4o", 0, 0, None, None)
-        assert cost.total_cost_usd == 0.0
-        assert cost.input_cost_usd == 0.0
-        assert cost.output_cost_usd == 0.0
+        assert cost.total_cost_usd == pytest.approx(0.0)
+        assert cost.input_cost_usd == pytest.approx(0.0)
+        assert cost.output_cost_usd == pytest.approx(0.0)
 
     def test_unknown_model_returns_zero(self) -> None:
         from agentobs.integrations.openai import _compute_cost
 
         cost = _compute_cost("totally-fictitious-llm-x", 1000, 500, None, None)
-        assert cost.total_cost_usd == 0.0
+        assert cost.total_cost_usd == pytest.approx(0.0)
 
     def test_cached_discount_reduces_total(self) -> None:
         from agentobs.integrations.openai import _compute_cost
@@ -507,7 +507,7 @@ class TestComputeCost:
 
         cost = _compute_cost("o3-mini", 100, 200, None, 50)
         # No reasoning rate → reasoning_cost added as regular output
-        assert cost.reasoning_cost_usd == 0.0
+        assert cost.reasoning_cost_usd == pytest.approx(0.0)
 
     def test_non_negative_clamp_edge_case(self) -> None:
         """Total is clamped >= 0.0 even with large fictitious cached discount."""

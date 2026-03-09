@@ -294,6 +294,24 @@ def emit_agent_run(run: object) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _is_error_or_timeout(event: "Event") -> bool:
+    """Return True if the event payload status is 'error' or 'timeout'."""
+    return event.payload.get("status", "") in ("error", "timeout")
+
+
+def _passes_sample_rate(event: "Event", sample_rate: float) -> bool:
+    """Deterministic per-trace sampling; returns True if the event should be kept."""
+    trace_id: str = event.payload.get("trace_id", "")
+    if trace_id:
+        token = trace_id[:8]
+        try:
+            bucket = int(token, 16)
+        except ValueError:
+            bucket = 0
+        return bucket / 0xFFFF_FFFF <= sample_rate
+    return random.random() <= sample_rate
+
+
 def _should_emit(event: "Event", cfg: "AgentOBSConfig") -> bool:
     """Return ``True`` if *event* should be exported under the current config.
 
@@ -321,28 +339,12 @@ def _should_emit(event: "Event", cfg: "AgentOBSConfig") -> bool:
         return True
 
     # Step 1: always emit errors when configured.
-    if cfg.always_sample_errors:
-        status = event.payload.get("status", "")
-        if status in ("error", "timeout"):
-            return True
+    if cfg.always_sample_errors and _is_error_or_timeout(event):
+        return True
 
     # Step 2: probabilistic sampling keyed on trace_id.
-    if cfg.sample_rate < 1.0:
-        trace_id: str = event.payload.get("trace_id", "")
-        if trace_id:
-            # Use the first 8 hex chars (32 bits) as a cheap deterministic hash.
-            token = trace_id[:8]
-            try:
-                bucket = int(token, 16)
-            except ValueError:
-                bucket = 0
-            # Normalise to [0, 1) and compare against sample_rate.
-            if bucket / 0xFFFF_FFFF > cfg.sample_rate:
-                return False
-        else:
-            # No trace_id: apply pure random sampling.
-            if random.random() > cfg.sample_rate:
-                return False
+    if cfg.sample_rate < 1.0 and not _passes_sample_rate(event, cfg.sample_rate):
+        return False
 
     # Step 3: custom filters (all must pass).
     for f in cfg.trace_filters:

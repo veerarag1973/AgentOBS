@@ -61,7 +61,7 @@ _SEMVER_RE: re.Pattern[str] = re.compile(
     r"^\d+\.\d+(?:\.\d+)?(?:[.-][a-zA-Z0-9.]+)?$"
 )
 _EVENT_TYPE_RE: re.Pattern[str] = re.compile(
-    r"^(?:llm\.[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*){1,3}|[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*){2,}\.[a-z][a-z0-9_]*)$"
+    r"^(?:llm\.[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*){1,3}|[a-z][a-z0-9-]*(?:\.[a-z][a-z0-9-]*){2,}\.[a-z][a-z0-9_]*)$"  # NOSONAR — complex but spec-required pattern
 )
 # RFC-0001 §6.1 — microsecond precision mandatory (exactly 6 decimal places)
 _TIMESTAMP_RE: re.Pattern[str] = re.compile(

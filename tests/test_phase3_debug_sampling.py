@@ -120,11 +120,11 @@ class TestColorHelpers:
         monkeypatch.delenv("AGENTOBS_NO_COLOR", raising=False)
         assert _no_color() is False
 
-    def test_no_color_set_via_NO_COLOR(self, monkeypatch):
+    def test_no_color_set_via_no_color(self, monkeypatch):
         monkeypatch.setenv("NO_COLOR", "1")
         assert _no_color() is True
 
-    def test_no_color_set_via_AGENTOBS_NO_COLOR(self, monkeypatch):
+    def test_no_color_set_via_agentobs_no_color(self, monkeypatch):
         monkeypatch.setenv("AGENTOBS_NO_COLOR", "1")
         assert _no_color() is True
 
@@ -397,10 +397,10 @@ class TestSummary:
         assert result["span_count"] == 0
         assert result["llm_calls"] == 0
         assert result["tool_calls"] == 0
-        assert result["total_duration_ms"] == 0.0
+        assert result["total_duration_ms"] == pytest.approx(0.0)
         assert result["total_input_tokens"] == 0
         assert result["total_output_tokens"] == 0
-        assert result["total_cost_usd"] == 0.0
+        assert result["total_cost_usd"] == pytest.approx(0.0)
         assert result["error_count"] == 0
         assert result["timeout_count"] == 0
         assert result["trace_id"] is None
@@ -411,7 +411,7 @@ class TestSummary:
         assert result["span_count"] == 1
         assert result["llm_calls"] == 1
         assert result["tool_calls"] == 0
-        assert result["total_duration_ms"] == 1000.0
+        assert result["total_duration_ms"] == pytest.approx(1000.0)
         assert result["trace_id"] == _TRACE_ID
 
     def test_tool_call_counted(self):
@@ -459,7 +459,7 @@ class TestSummary:
         p1 = _make_span(span_id="a" * 16, duration_ms=100.0)
         p2 = _make_span(span_id="b" * 16, duration_ms=250.0)
         result = summary([p1, p2])
-        assert result["total_duration_ms"] == 350.0
+        assert result["total_duration_ms"] == pytest.approx(350.0)
 
     def test_no_token_usage_gives_zero_tokens(self):
         p = _make_span(token_usage=None, span_id="f" * 16)
@@ -684,7 +684,7 @@ class TestConfigSamplingFields:
     def test_sample_rate_default_is_1(self):
         configure()  # reset to defaults
         cfg = get_config()
-        assert cfg.sample_rate == 1.0
+        assert cfg.sample_rate == pytest.approx(1.0)
 
     def test_always_sample_errors_default_true(self):
         configure()
@@ -698,7 +698,7 @@ class TestConfigSamplingFields:
 
     def test_configure_sample_rate(self):
         configure(sample_rate=0.5)
-        assert get_config().sample_rate == 0.5
+        assert get_config().sample_rate == pytest.approx(0.5)
 
     def test_configure_always_sample_errors_false(self):
         configure(always_sample_errors=False)
@@ -713,26 +713,26 @@ class TestConfigSamplingFields:
         from agentobs.config import _load_from_env  # noqa: PLC0415
         monkeypatch.setenv("AGENTOBS_SAMPLE_RATE", "0.25")
         _load_from_env()
-        assert get_config().sample_rate == 0.25
+        assert get_config().sample_rate == pytest.approx(0.25)
 
     def test_sample_rate_env_var_clamped_above_1(self, monkeypatch):
         from agentobs.config import _load_from_env  # noqa: PLC0415
         monkeypatch.setenv("AGENTOBS_SAMPLE_RATE", "2.0")
         _load_from_env()
-        assert get_config().sample_rate == 1.0
+        assert get_config().sample_rate == pytest.approx(1.0)
 
     def test_sample_rate_env_var_clamped_below_0(self, monkeypatch):
         from agentobs.config import _load_from_env  # noqa: PLC0415
         monkeypatch.setenv("AGENTOBS_SAMPLE_RATE", "-0.5")
         _load_from_env()
-        assert get_config().sample_rate == 0.0
+        assert get_config().sample_rate == pytest.approx(0.0)
 
     def test_sample_rate_env_var_invalid_string_ignored(self, monkeypatch):
         from agentobs.config import _load_from_env  # noqa: PLC0415
         configure(sample_rate=0.7)  # set to non-default first
         monkeypatch.setenv("AGENTOBS_SAMPLE_RATE", "not_a_float")
         _load_from_env()  # should not raise; falls back to 1.0
-        assert get_config().sample_rate == 1.0
+        assert get_config().sample_rate == pytest.approx(1.0)
 
     def teardown_method(self, _method):
         """Reset config after each sampling test."""
@@ -776,7 +776,6 @@ class TestShouldEmit:
 
     def test_error_dropped_when_always_sample_errors_false(self):
         cfg = _cfg(sample_rate=0.0, always_sample_errors=False)
-        event = _make_event({"trace_id": "a" * 32, "status": "error"})
         # At rate 0.0, non-error events are dropped even with a hash that happens
         # to be 0 — we need a trace_id that hashes above 0.
         # Use a trace_id that deterministically drops with sample_rate=0.0

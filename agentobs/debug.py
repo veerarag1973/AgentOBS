@@ -111,27 +111,34 @@ def _status_badge(status: str) -> str:
     return status
 
 
+def _make_model_str(p: "SpanPayload") -> str:
+    if p.model is None:
+        return ""
+    model_name = getattr(p.model, "name", None) or str(p.model)
+    return f" [{model_name}]"
+
+
+def _make_token_str(p: "SpanPayload") -> str:
+    if p.token_usage is None:
+        return ""
+    inp = getattr(p.token_usage, "input_tokens", None) or getattr(p.token_usage, "prompt_tokens", None) or 0
+    out = getattr(p.token_usage, "output_tokens", None) or getattr(p.token_usage, "completion_tokens", None) or 0
+    return f"  in={inp} out={out} tok" if (inp or out) else ""
+
+
+def _make_cost_str(p: "SpanPayload") -> str:
+    if p.cost is None:
+        return ""
+    total = getattr(p.cost, "total_cost_usd", None) or 0.0
+    return f"  ${total:.4f}" if total else ""
+
+
 def _span_label(p: "SpanPayload") -> str:
     """Build the single-line description of a span used in the tree."""
-    model_str = ""
-    if p.model is not None:
-        model_name = getattr(p.model, "name", None) or str(p.model)
-        model_str = f" [{model_name}]"
-
+    model_str = _make_model_str(p)
     dur = f"  {p.duration_ms:.0f}ms" if p.duration_ms else ""
-
-    token_str = ""
-    if p.token_usage is not None:
-        inp = getattr(p.token_usage, "input_tokens", None) or getattr(p.token_usage, "prompt_tokens", None) or 0
-        out = getattr(p.token_usage, "output_tokens", None) or getattr(p.token_usage, "completion_tokens", None) or 0
-        if inp or out:
-            token_str = f"  in={inp} out={out} tok"
-
-    cost_str = ""
-    if p.cost is not None:
-        total = getattr(p.cost, "total_cost_usd", None) or 0.0
-        if total:
-            cost_str = f"  ${total:.4f}"
+    token_str = _make_token_str(p)
+    cost_str = _make_cost_str(p)
 
     error_str = ""
     if p.error:

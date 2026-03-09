@@ -387,12 +387,12 @@ class TestLLMSpanSchemaAdditions:
     def test_span_has_temperature(self):
         with tracer.span("s", model="gpt-4o", temperature=0.7) as s:
             ...
-        assert s.temperature == 0.7
+        assert s.temperature == pytest.approx(0.7)
 
     def test_span_has_top_p(self):
         with tracer.span("s", top_p=0.95) as s:
             ...
-        assert s.top_p == 0.95
+        assert s.top_p == pytest.approx(0.95)
 
     def test_span_has_max_tokens(self):
         with tracer.span("s", max_tokens=512) as s:
@@ -402,8 +402,8 @@ class TestLLMSpanSchemaAdditions:
     def test_all_three_fields_together(self):
         with tracer.span("s", model="claude-3", temperature=1.0, top_p=0.9, max_tokens=1024) as s:
             ...
-        assert s.temperature == 1.0
-        assert s.top_p == 0.9
+        assert s.temperature == pytest.approx(1.0)
+        assert s.top_p == pytest.approx(0.9)
         assert s.max_tokens == 1024
 
     def test_fields_default_to_none(self):
@@ -417,21 +417,21 @@ class TestLLMSpanSchemaAdditions:
         with tracer.span("s", temperature=0.5, top_p=0.8, max_tokens=100) as s:
             ...
         p = s.to_span_payload()
-        assert p.temperature == 0.5
-        assert p.top_p == 0.8
+        assert p.temperature == pytest.approx(0.5)
+        assert p.top_p == pytest.approx(0.8)
         assert p.max_tokens == 100
 
     def test_temperature_in_payload_to_dict(self):
         with tracer.span("s", temperature=0.3) as s:
             ...
         d = s.to_span_payload().to_dict()
-        assert d["temperature"] == 0.3
+        assert d["temperature"] == pytest.approx(0.3)
 
     def test_top_p_in_payload_to_dict(self):
         with tracer.span("s", top_p=0.85) as s:
             ...
         d = s.to_span_payload().to_dict()
-        assert d["top_p"] == 0.85
+        assert d["top_p"] == pytest.approx(0.85)
 
     def test_max_tokens_in_payload_to_dict(self):
         with tracer.span("s", max_tokens=256) as s:
@@ -468,8 +468,8 @@ class TestLLMSpanSchemaAdditions:
     def test_tracer_span_passes_fields_through(self):
         """tracer.span() must forward temperature/top_p/max_tokens to SpanContextManager."""
         cm = tracer.span("s", temperature=0.4, top_p=0.6, max_tokens=300)
-        assert cm._temperature == 0.4
-        assert cm._top_p == 0.6
+        assert cm._temperature == pytest.approx(0.4)
+        assert cm._top_p == pytest.approx(0.6)
         assert cm._max_tokens == 300
 
     def test_trace_llm_call_passes_fields(self):
@@ -478,8 +478,8 @@ class TestLLMSpanSchemaAdditions:
         with trace.llm_call(model="gpt-4o", temperature=0.2, top_p=0.7, max_tokens=50) as s:
             ...
         trace.end()
-        assert s.temperature == 0.2
-        assert s.top_p == 0.7
+        assert s.temperature == pytest.approx(0.2)
+        assert s.top_p == pytest.approx(0.7)
         assert s.max_tokens == 50
 
     def test_trace_span_passes_fields(self):
@@ -488,13 +488,13 @@ class TestLLMSpanSchemaAdditions:
         with trace.span("step", temperature=1.0, max_tokens=10) as s:
             ...
         trace.end()
-        assert s.temperature == 1.0
+        assert s.temperature == pytest.approx(1.0)
         assert s.max_tokens == 10
 
     def test_zero_temperature_valid(self):
         with tracer.span("s", temperature=0.0) as s:
             ...
-        assert s.temperature == 0.0
+        assert s.temperature == pytest.approx(0.0)
 
     def test_negative_temperature_stores(self):
         """No validation on temperature — library trusts caller."""
@@ -633,7 +633,7 @@ class TestToolCallNewFields:
         )
         d = tc.to_dict()
         assert d["error_type"] == "ValueError"
-        assert d["duration_ms"] == 12.5
+        assert d["duration_ms"] == pytest.approx(12.5)
 
 
 # ===========================================================================
@@ -710,8 +710,8 @@ class TestPhase2Integration:
             s.add_event("stream.end", metadata={"tokens": 180})
         payload = s.to_span_payload()
         d = payload.to_dict()
-        assert d["temperature"] == 0.8
-        assert d["top_p"] == 0.95
+        assert d["temperature"] == pytest.approx(0.8)
+        assert d["top_p"] == pytest.approx(0.95)
         assert d["max_tokens"] == 512
         assert len(d["events"]) == 3
         assert d["events"][0]["name"] == "prompt.sent"
@@ -740,7 +740,7 @@ class TestPhase2Integration:
         trace.end()
         payload = s.to_span_payload()
         d = payload.to_dict()
-        assert d["temperature"] == 0.5
+        assert d["temperature"] == pytest.approx(0.5)
         tc_d = d["tool_calls"][0]
         assert tc_d["retry_count"] == 1
         assert tc_d["external_api"] == "serp"
@@ -767,7 +767,7 @@ class TestPhase2Integration:
         trace.end()
         data = json.loads(trace.to_json())
         span = data["spans"][0]
-        assert span["temperature"] == 0.7
+        assert span["temperature"] == pytest.approx(0.7)
         assert span["max_tokens"] == 200
         assert len(span["events"]) == 2
 
@@ -781,7 +781,7 @@ class TestPhase2Integration:
             return s
 
         s = asyncio.run(_run())
-        assert s.temperature == 0.3
+        assert s.temperature == pytest.approx(0.3)
         assert s.events[0].name == "async.prompt.sent"
 
     def test_concurrent_async_spans_independent_events(self):

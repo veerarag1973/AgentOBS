@@ -143,24 +143,24 @@ def span_id_for(trace_id: str) -> str:
 class TestLatencyStats:
     def test_empty(self):
         ls = LatencyStats._from_samples([])
-        assert ls.min == 0.0
-        assert ls.max == 0.0
-        assert ls.p50 == 0.0
-        assert ls.p95 == 0.0
-        assert ls.p99 == 0.0
+        assert ls.min == pytest.approx(0.0)
+        assert ls.max == pytest.approx(0.0)
+        assert ls.p50 == pytest.approx(0.0)
+        assert ls.p95 == pytest.approx(0.0)
+        assert ls.p99 == pytest.approx(0.0)
 
     def test_single(self):
         ls = LatencyStats._from_samples([42.0])
-        assert ls.min == 42.0
-        assert ls.max == 42.0
-        assert ls.p50 == 42.0
-        assert ls.p95 == 42.0
-        assert ls.p99 == 42.0
+        assert ls.min == pytest.approx(42.0)
+        assert ls.max == pytest.approx(42.0)
+        assert ls.p50 == pytest.approx(42.0)
+        assert ls.p95 == pytest.approx(42.0)
+        assert ls.p99 == pytest.approx(42.0)
 
     def test_two_values(self):
         ls = LatencyStats._from_samples([10.0, 20.0])
-        assert ls.min == 10.0
-        assert ls.max == 20.0
+        assert ls.min == pytest.approx(10.0)
+        assert ls.max == pytest.approx(20.0)
 
     def test_percentiles_ordered(self):
         samples = [float(i) for i in range(1, 101)]
@@ -183,17 +183,17 @@ class TestAggregate:
         result = aggregate([])
         assert result.trace_count == 0
         assert result.span_count == 0
-        assert result.agent_success_rate == 1.0
+        assert result.agent_success_rate == pytest.approx(1.0)
         assert result.total_input_tokens == 0
         assert result.total_output_tokens == 0
-        assert result.total_cost_usd == 0.0
-        assert result.tool_failure_rate == 0.0
+        assert result.total_cost_usd == pytest.approx(0.0)
+        assert result.tool_failure_rate == pytest.approx(0.0)
 
     def test_single_ok_span(self):
         ev = _make_span_event(operation="chat", status="ok")
         result = aggregate([ev])
         assert result.span_count == 1
-        assert result.agent_success_rate == 1.0
+        assert result.agent_success_rate == pytest.approx(1.0)
 
     def test_error_span_reduces_success_rate(self):
         ok_ev = _make_span_event(trace_id=_TRACE_A, status="ok")
@@ -213,7 +213,7 @@ class TestAggregate:
             _make_span_event(trace_id=_TRACE_B, span_id=_SPAN_ID2, status="error",
                              event_type=EventType.TRACE_SPAN_FAILED),
         ]
-        assert aggregate(events).agent_success_rate == 0.0
+        assert aggregate(events).agent_success_rate == pytest.approx(0.0)
 
     def test_token_accumulation(self):
         events = [
@@ -244,7 +244,7 @@ class TestAggregate:
     def test_non_llm_operations_not_counted_as_llm(self):
         events = [_make_span_event(operation="tool_call", duration_ms=50.0)]
         result = aggregate(events)
-        assert result.llm_latency_ms.min == 0.0
+        assert result.llm_latency_ms.min == pytest.approx(0.0)
 
     def test_tool_failure_rate(self):
         events = [
@@ -258,7 +258,7 @@ class TestAggregate:
     def test_tool_failure_rate_no_tools(self):
         events = [_make_span_event(operation="chat")]
         result = aggregate(events)
-        assert result.tool_failure_rate == 0.0
+        assert result.tool_failure_rate == pytest.approx(0.0)
 
     def test_token_by_model(self):
         events = [
@@ -303,7 +303,7 @@ class TestHelperFunctions:
 
     def test_llm_latency_empty(self):
         ls = llm_latency([])
-        assert ls.p95 == 0.0
+        assert ls.p95 == pytest.approx(0.0)
 
     def test_llm_latency_values(self):
         events = [_make_span_event(operation="chat", duration_ms=300.0)]
@@ -312,7 +312,7 @@ class TestHelperFunctions:
 
     def test_tool_failure_rate_all_ok(self):
         events = [_make_span_event(operation="tool_call", status="ok")]
-        assert tool_failure_rate(events) == 0.0
+        assert tool_failure_rate(events) == pytest.approx(0.0)
 
     def test_token_usage_dict(self):
         events = [_make_span_event(model_name="gpt-4o", input_tokens=50, output_tokens=30)]
@@ -480,7 +480,10 @@ class TestTraceStoreListCalls:
 
     def test_list_tool_calls_excludes_llm_calls(self):
         self.store.record(_make_span_event(operation="chat"))
-        assert self.store.list_tool_calls(_TRACE_A) == []
+        result = self.store.list_tool_calls(_TRACE_A)
+        assert result == []
+        # Verify the LLM call is still accessible via list_llm_calls
+        assert len(self.store.list_llm_calls(_TRACE_A)) == 1
 
     def test_list_calls_sorted_by_start_time(self):
         ev1 = _make_span_event(operation="tool_call", duration_ms=100.0)
@@ -586,8 +589,8 @@ class TestTraceStoreDispatchIntegration:
 
         captured_events = []
         with patch("agentobs._store.TraceStore.record", side_effect=lambda e: captured_events.append(e)):
-            with tracer.span("test-span", operation="chat") as span:
-                trace_id = span.trace_id
+            with tracer.span("test-span", operation="chat"):
+                ...
 
         # At least one event was captured by the mocked store
         assert len(captured_events) >= 1

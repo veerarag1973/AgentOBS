@@ -224,6 +224,7 @@ class TestAsyncContextIsolation:
 
                 async def inner_task():
                     nonlocal inner_tid
+                    await asyncio.sleep(0)  # yield control to satisfy async requirement
                     stack = _span_stack_var.get()
                     # The task was created inside the outer span, so it
                     # *copies* the context at task-creation time.
@@ -1177,7 +1178,7 @@ class TestCoverageGapClosers:
         """When emit_span raises, _handle_export_error is called (lines 349-351)."""
         import agentobs._stream as stream_mod
         handled: list[Exception] = []
-        monkeypatch.setattr(stream_mod, "emit_span", lambda span: (_ for _ in ()).throw(RuntimeError("boom")))
+        monkeypatch.setattr(stream_mod, "emit_span", lambda span: (_ for _ in ()).throw(RuntimeError("boom")))  # NOSONAR — generator.throw() trick for lambda
         monkeypatch.setattr(stream_mod, "_handle_export_error", lambda exc: handled.append(exc))
         with tracer.span("x"):
             ...
@@ -1234,7 +1235,7 @@ class TestCoverageGapClosers:
         """When emit_agent_step raises, _handle_export_error is called (lines 517-519)."""
         import agentobs._stream as stream_mod
         handled: list[Exception] = []
-        monkeypatch.setattr(stream_mod, "emit_agent_step", lambda ctx: (_ for _ in ()).throw(RuntimeError("step-boom")))
+        monkeypatch.setattr(stream_mod, "emit_agent_step", lambda ctx: (_ for _ in ()).throw(RuntimeError("step-boom")))  # NOSONAR — generator.throw() trick for lambda
         monkeypatch.setattr(stream_mod, "_handle_export_error", lambda exc: handled.append(exc))
         with tracer.agent_run("a"):
             with tracer.agent_step("s"):
@@ -1283,7 +1284,7 @@ class TestCoverageGapClosers:
         """When emit_agent_run raises, _handle_export_error is called (lines 672-674)."""
         import agentobs._stream as stream_mod
         handled: list[Exception] = []
-        monkeypatch.setattr(stream_mod, "emit_agent_run", lambda ctx: (_ for _ in ()).throw(RuntimeError("run-boom")))
+        monkeypatch.setattr(stream_mod, "emit_agent_run", lambda ctx: (_ for _ in ()).throw(RuntimeError("run-boom")))  # NOSONAR — generator.throw() trick for lambda
         monkeypatch.setattr(stream_mod, "_handle_export_error", lambda exc: handled.append(exc))
         with tracer.agent_run("a"):
             ...

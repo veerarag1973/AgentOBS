@@ -408,18 +408,10 @@ def _cmd_inspect(args: argparse.Namespace) -> int:
     return 1
 
 
-def _cmd_stats(args: argparse.Namespace) -> int:
-    """Implement the ``stats`` sub-command."""
-    path = Path(args.file)
-    if not path.exists():
-        print(f"error: file not found: {path}", file=sys.stderr)
-        return 2
-
-    rows = _read_jsonl_events(path)
-    if not rows:
-        print(_NO_EVENTS_MSG)
-        return 0
-
+def _accumulate_stats(
+    rows: list[tuple[int, Any]],
+) -> tuple[dict[str, int], int, int, int, float, list[str], int]:
+    """Aggregate token/cost/type counters from parsed event rows."""
     type_counts: dict[str, int] = {}
     prompt_tokens = 0
     completion_tokens = 0
@@ -427,7 +419,6 @@ def _cmd_stats(args: argparse.Namespace) -> int:
     cost_usd = 0.0
     timestamps: list[str] = []
     parse_errors = 0
-
     for _lineno, item in rows:
         if isinstance(item, Exception):
             parse_errors += 1
@@ -441,6 +432,22 @@ def _cmd_stats(args: argparse.Namespace) -> int:
         cost_usd += float(payload.get("cost_usd") or 0.0)
         if item.timestamp:
             timestamps.append(item.timestamp)
+    return type_counts, prompt_tokens, completion_tokens, total_tokens, cost_usd, timestamps, parse_errors
+
+
+def _cmd_stats(args: argparse.Namespace) -> int:
+    """Implement the ``stats`` sub-command."""
+    path = Path(args.file)
+    if not path.exists():
+        print(f"error: file not found: {path}", file=sys.stderr)
+        return 2
+
+    rows = _read_jsonl_events(path)
+    if not rows:
+        print(_NO_EVENTS_MSG)
+        return 0
+
+    type_counts, prompt_tokens, completion_tokens, total_tokens, cost_usd, timestamps, parse_errors = _accumulate_stats(rows)  # noqa: E501
 
     total_events = len(rows) - parse_errors
     print(f"Events: {total_events}" + (f" ({parse_errors} parse error(s) skipped)" if parse_errors else ""))  # noqa: E501

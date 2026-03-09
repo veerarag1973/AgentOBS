@@ -99,10 +99,6 @@ def _build_otel_mock() -> types.ModuleType:
             self.started_spans.append((name, kwargs, span))
             return span
 
-    class _FakeProvider:
-        def get_tracer(self, name: str, version: str = "") -> _FakeTracer:
-            return _FakeTracer()
-
     _fake_tracer = _FakeTracer()
 
     def _get_tracer(name: str, version: str = "") -> _FakeTracer:

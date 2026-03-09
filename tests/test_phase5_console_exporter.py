@@ -670,7 +670,7 @@ class TestConsoleExporterEndToEnd:
     def test_full_scenario_no_exceptions(self, capsys: pytest.CaptureFixture) -> None:
         """Smoke-test: full run with steps + spans emits output without errors."""
         with patch("agentobs.exporters.console._use_colour", return_value=False):
-            with tracer.agent_run("smoke-bot") as run:
+            with tracer.agent_run("smoke-bot"):
                 with tracer.agent_step("fetch") as step:
                     step.set_attribute("url", "https://example.com")
                 with tracer.agent_step("process"):

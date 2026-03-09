@@ -38,7 +38,7 @@ from agentobs._span import Span
 # ---------------------------------------------------------------------------
 
 
-def _make_span(operation: str = "chat", name: str = "test") -> Span:
+def _make_span(operation: str = "chat", name: str = "test") -> MagicMock:
     """Build a minimal Span-like mock for hook testing."""
     sp = MagicMock(spec=Span)
     sp.operation = operation
@@ -69,7 +69,7 @@ class TestHookRegistryRegistration:
         self.reg = HookRegistry()
 
     def test_on_llm_call_decorator_returns_fn(self):
-        def cb(span): pass
+        def cb(span): ...  # noqa: E704
         result = self.reg.on_llm_call(cb)
         assert result is cb
 
@@ -230,7 +230,7 @@ class TestHooksWiredIntoSpanContextManager:
         def hook(span):
             start_calls.append(("fired", span.status))
 
-        with tracer.span("my-llm", operation="chat") as span:
+        with tracer.span("my-llm", operation="chat"):
             in_block = list(start_calls)
 
         # Hook must have fired before or at the start of the block
@@ -299,12 +299,12 @@ class TestCrewAIHandlerImport:
         # The module should import fine even if crewai is not installed.
         from agentobs.integrations.crewai import AgentOBSCrewAIHandler, patch
         assert callable(patch)
-        assert AgentOBSCrewAIHandler is not None
+        assert callable(AgentOBSCrewAIHandler)
 
     def test_handler_instantiation(self):
         from agentobs.integrations.crewai import AgentOBSCrewAIHandler
         handler = AgentOBSCrewAIHandler()
-        assert handler is not None
+        assert isinstance(handler, AgentOBSCrewAIHandler)
 
 
 class TestCrewAIHandlerToolLifecycle:
@@ -479,7 +479,7 @@ class TestCrewAIPatch:
         with patch.dict("sys.modules", {"crewai": fake_crewai}):
             with patch("importlib.util.find_spec", return_value=MagicMock()):
                 import warnings  # noqa: PLC0415
-                with warnings.catch_warnings(record=True) as w:
+                with warnings.catch_warnings(record=True):
                     warnings.simplefilter("always")
                     crewai_patch()
                 # Should either succeed silently or warn — must not raise AttributeError
