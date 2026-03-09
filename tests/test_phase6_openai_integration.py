@@ -293,7 +293,7 @@ class TestNormalizeResponse:
         from agentobs.integrations.openai import normalize_response
 
         resp = _make_response(model="gpt-4o", prompt_tokens=100, completion_tokens=50, total_tokens=150)
-        tu, mi, cost = normalize_response(resp)
+        tu, _, _ = normalize_response(resp)
 
         assert tu.input_tokens == 100
         assert tu.output_tokens == 50
@@ -736,10 +736,10 @@ class TestPatchedMethodInvocation:
         _build_mock_openai()
         patch()
 
-        Completions = sys.modules["openai.resources.chat.completions"].Completions
+        completions_cls = sys.modules["openai.resources.chat.completions"].Completions
 
         with SpanContextManager("test") as span:
-            Completions.create(None)
+            completions_cls.create(None)
             assert span.token_usage is not None
 
     def test_patched_async_create_populates_span(self) -> None:
@@ -752,11 +752,11 @@ class TestPatchedMethodInvocation:
         _build_mock_openai()
         patch()
 
-        AsyncCompletions = sys.modules["openai.resources.chat.completions"].AsyncCompletions
+        async_completions_cls = sys.modules["openai.resources.chat.completions"].AsyncCompletions
 
         async def _run() -> None:
             async with SpanContextManager("async-test") as span:
-                await AsyncCompletions.create(None)
+                await async_completions_cls.create(None)
                 assert span.token_usage is not None
 
         asyncio.run(_run())
@@ -777,9 +777,9 @@ class TestPatchedMethodInvocation:
         sys.modules["openai.resources.chat.completions"].Completions.create = _tracking_create
         patch()
 
-        Completions = sys.modules["openai.resources.chat.completions"].Completions
+        completions_cls = sys.modules["openai.resources.chat.completions"].Completions
         with SpanContextManager("span"):
-            Completions.create(None, model="gpt-4o", messages=[])
+            completions_cls.create(None, model="gpt-4o", messages=[])
 
         assert "model" in received["kwargs"]
         assert received["kwargs"]["model"] == "gpt-4o"
@@ -796,9 +796,9 @@ class TestPatchedMethodInvocation:
         )
         patch()
 
-        Completions = sys.modules["openai.resources.chat.completions"].Completions
+        completions_cls = sys.modules["openai.resources.chat.completions"].Completions
         with SpanContextManager("span"):
-            result = Completions.create(None)
+            result = completions_cls.create(None)
 
         assert result is expected_resp
 
@@ -903,8 +903,8 @@ class TestPhase6EndToEnd:
         _run_stack_var.set(())
 
         try:
-            with tracer.agent_run("gpt-agent") as run:
-                with tracer.agent_step("llm-step") as step:
+            with tracer.agent_run("gpt-agent") as _agent_run:
+                with tracer.agent_step("llm-step") as _agent_step:
                     with tracer.span("gpt-4o-call") as span:
                         # Simulate auto-populate from patched OpenAI
                         _auto_populate_span(_make_response(

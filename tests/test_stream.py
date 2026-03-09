@@ -382,7 +382,7 @@ class TestFilterByTags:
         assert len(filtered) == 1
 
     def test_event_without_tags_not_matched(self) -> None:
-        no_tags = _make_event()  # tags=None
+        no_tags = _make_event()
         stream = EventStream([no_tags])
 
         filtered = stream.filter_by_tags(env="prod")

@@ -179,7 +179,7 @@ class TestCostBreakdownFull:
             input_cost_usd=0.005,
             output_cost_usd=0.002,
             cached_discount_usd=0.001,
-            total_cost_usd=0.006,  # 0.005 + 0.002 - 0.001 = 0.006
+            total_cost_usd=0.006,
         )
         d = c.to_dict()
         assert "cached_discount_usd" in d

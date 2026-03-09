@@ -85,9 +85,8 @@ def _inject_fake_anthropic() -> None:
 
 
 def _remove_fake_anthropic() -> None:
-    for key in list(sys.modules):
-        if key == "anthropic" or key.startswith("anthropic."):
-            del sys.modules[key]
+    for key in [k for k in sys.modules if k == "anthropic" or k.startswith("anthropic.")]:
+        del sys.modules[key]
 
 
 def _make_anthropic_usage(
@@ -147,7 +146,7 @@ class TestAnthropicPricingTable:
         from agentobs.integrations.anthropic import PRICING_DATE  # noqa: PLC0415
 
         assert len(PRICING_DATE) == 10
-        assert PRICING_DATE[:2] == "20"
+        assert PRICING_DATE.startswith("20")
 
     def test_list_models_sorted(self) -> None:
         from agentobs.integrations.anthropic import list_models  # noqa: PLC0415
@@ -340,9 +339,8 @@ def _inject_fake_ollama() -> None:
 
 
 def _remove_fake_ollama() -> None:
-    for key in list(sys.modules):
-        if key == "ollama" or key.startswith("ollama."):
-            del sys.modules[key]
+    for key in [k for k in sys.modules if k == "ollama" or k.startswith("ollama.")]:
+        del sys.modules[key]
 
 
 def _make_ollama_response(
@@ -515,9 +513,8 @@ def _inject_fake_groq() -> None:
 
 
 def _remove_fake_groq() -> None:
-    for key in list(sys.modules):
-        if key == "groq" or key.startswith("groq."):
-            del sys.modules[key]
+    for key in [k for k in sys.modules if k == "groq" or k.startswith("groq.")]:
+        del sys.modules[key]
 
 
 class TestGroqPricingTable:
@@ -556,7 +553,7 @@ class TestGroqPricingTable:
         from agentobs.integrations.groq import PRICING_DATE  # noqa: PLC0415
 
         assert len(PRICING_DATE) == 10
-        assert PRICING_DATE[:2] == "20"
+        assert PRICING_DATE.startswith("20")
 
     def test_llama3_70b_cheaper_than_llama31_405b(self) -> None:
         from agentobs.integrations.groq import GROQ_PRICING  # noqa: PLC0415
@@ -772,9 +769,8 @@ def _inject_fake_together() -> None:
 
 
 def _remove_fake_together() -> None:
-    for key in list(sys.modules):
-        if key == "together" or key.startswith("together."):
-            del sys.modules[key]
+    for key in [k for k in sys.modules if k == "together" or k.startswith("together.")]:
+        del sys.modules[key]
 
 
 class TestTogetherPricingTable:

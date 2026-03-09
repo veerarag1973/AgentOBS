@@ -119,8 +119,8 @@ class TestValidate:
         assert validate("01ARYZ3NDEKTSV4RRFFQ69G5FI") is False  # I not in alphabet
 
     def test_rejects_non_string(self) -> None:
-        assert validate(12345) is False  # type: ignore[arg-type]
-        assert validate(None) is False  # type: ignore[arg-type]
+        assert validate(12345) is False  # type: ignore[arg-type]  # NOSONAR
+        assert validate(None) is False  # type: ignore[arg-type]  # NOSONAR
 
     def test_accepts_lowercase(self) -> None:
         """Case-insensitive validation — lowercase chars are accepted."""

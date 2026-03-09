@@ -352,7 +352,7 @@ class DatadogExporter:
             series.append(
                 {
                     "metric": f"llm.{key}",
-                    "type": 0,  # 0 = UNSPECIFIED / gauge
+                    "type": 0,
                     "points": [{"timestamp": ts_sec, "value": float(value)}],
                     "tags": tags,
                 }

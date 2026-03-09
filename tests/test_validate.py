@@ -129,7 +129,7 @@ class TestValidateEventStdlib:
 
     def test_non_event_raises_type_error(self):
         with pytest.raises(TypeError, match="Event instance"):
-            validate_event({"event_type": "bad"})  # type: ignore
+            validate_event({"event_type": "bad"})  # type: ignore  # NOSONAR
 
     def test_calls_stdlib_validate_directly(self):
         """Also exercise _stdlib_validate directly."""
@@ -207,7 +207,7 @@ class TestValidateEventStdlib:
     def test_non_dict_root_raises(self):
         with patch.dict(sys.modules, {"jsonschema": None, "jsonschema.exceptions": None}):  # noqa: SIM117
             with pytest.raises(SchemaValidationError, match="<root>"):
-                _stdlib_validate("not-a-dict")  # type: ignore
+                _stdlib_validate("not-a-dict")  # type: ignore  # NOSONAR
 
     # --- Optional field patterns ---
     def test_bad_trace_id_raises(self):

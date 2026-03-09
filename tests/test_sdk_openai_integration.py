@@ -394,14 +394,11 @@ def _uninstall_mock_openai() -> None:
 class TestPatchLifecycle:
     def setup_method(self) -> None:
         # Remove real or leftover mock openai from sys.modules
-        for key in list(sys.modules):
-            if key == "openai" or key.startswith("openai."):
-                del sys.modules[key]
+        for key in [k for k in sys.modules if k == "openai" or k.startswith("openai.")]:
+            del sys.modules[key]
 
     def teardown_method(self) -> None:
-        for key in list(sys.modules):
-            if key == "openai" or key.startswith("openai."):
-                del sys.modules[key]
+        self.setup_method()
 
     def test_is_patched_false_when_not_installed(self) -> None:
         from agentobs.integrations.openai import is_patched  # noqa: PLC0415
@@ -534,7 +531,7 @@ class TestAutoPopulateSpan:
         from agentobs._span import SpanContextManager  # noqa: PLC0415
         from agentobs.integrations.openai import _auto_populate_span  # noqa: PLC0415
 
-        with SpanContextManager("test-span") as span:  # noqa: F841
+        with SpanContextManager("test-span"):
             _auto_populate_span("not-a-response-object")  # should swallow error
 
 
@@ -631,14 +628,11 @@ class TestPatchedMethodInvocation:
     """Test that the wrapper bodies (lines 95-97, 110-112) actually execute."""
 
     def setup_method(self) -> None:
-        for key in list(sys.modules):
-            if key == "openai" or key.startswith("openai."):
-                del sys.modules[key]
+        for key in [k for k in sys.modules if k == "openai" or k.startswith("openai.")]:
+            del sys.modules[key]
 
     def teardown_method(self) -> None:
-        for key in list(sys.modules):
-            if key == "openai" or key.startswith("openai."):
-                del sys.modules[key]
+        self.setup_method()
 
     def test_patched_sync_create_populates_span(self) -> None:
         """Calling the patched Completions.create executes the wrapper body."""
@@ -649,11 +643,11 @@ class TestPatchedMethodInvocation:
         patch()
 
         completions_mod = sys.modules["openai.resources.chat.completions"]
-        Completions = completions_mod.Completions  # noqa: N806
+        completions_cls = completions_mod.Completions
 
         with SpanContextManager("test") as span:
             # Call the patched create — simulates an actual API call
-            Completions.create(None)  # None as self
+            completions_cls.create(None)  # None as self
             assert span.token_usage is not None
 
     def test_patched_async_create_populates_span(self) -> None:
@@ -665,11 +659,11 @@ class TestPatchedMethodInvocation:
         patch()
 
         completions_mod = sys.modules["openai.resources.chat.completions"]
-        AsyncCompletions = completions_mod.AsyncCompletions  # noqa: N806
+        async_completions_cls = completions_mod.AsyncCompletions
 
         async def _run() -> None:
             async with SpanContextManager("async-test") as span:
-                await AsyncCompletions.create(None)
+                await async_completions_cls.create(None)
                 assert span.token_usage is not None
 
         asyncio.run(_run())

@@ -121,7 +121,7 @@ def _reset_exporter() -> None:
             try:
                 if hasattr(_cached_exporter, "close"):
                     _cached_exporter.close()  # type: ignore[union-attr]
-            except Exception as exc:
+            except Exception as exc:  # NOSONAR — exporter.close() can raise arbitrary errors
                 _handle_export_error(exc)
         _cached_exporter = None
     with _sign_lock:
