@@ -329,6 +329,39 @@ from agentobs.ulid import generate as generate_ulid
 from agentobs.ulid import validate as validate_ulid
 from agentobs.validate import validate_event
 from agentobs.normalizer import GenericNormalizer, ProviderNormalizer
+from agentobs.trace import trace
+from agentobs.export.otlp_bridge import SpanOTLPBridge, span_to_otlp_dict
+from agentobs.cost import CostTracker, BudgetMonitor, budget_alert, emit_cost_event, emit_cost_attributed, cost_summary, CostRecord
+from agentobs.inspect import InspectorSession, ToolCallRecord, inspect_trace
+from agentobs.toolsmith import (
+    tool,
+    ToolRegistry,
+    ToolSchema,
+    ToolParameter,
+    ToolValidationError,
+    build_openai_schema,
+    build_anthropic_schema,
+    default_registry,
+)
+from agentobs.retry import (
+    retry,
+    FallbackChain,
+    CircuitBreaker,
+    CircuitState,
+    CostAwareRouter,
+    AllProvidersFailedError,
+    CircuitOpenError,
+)
+from agentobs.cache import (
+    SemanticCache,
+    cached,
+    InMemoryBackend,
+    SQLiteBackend,
+    RedisBackend,
+    CacheBackendError,
+    CacheEntry,
+)
+from agentobs.lint import LintError, run_checks
 
 __version__: str = "1.0.7"
 #: RFC-0001 conformance profile label (AGENTOBS-Enterprise-2.0).
@@ -525,5 +558,49 @@ __all__: list[str] = [
     "GenericNormalizer",
     # Conformance
     "CONFORMANCE_PROFILE",
+    # Tool 1 — @trace() decorator + OTLP bridge
+    "trace",
+    "SpanOTLPBridge",
+    "span_to_otlp_dict",
+    # Tool 2 — Cost Calculation Engine
+    "BudgetMonitor",
+    "CostRecord",
+    "CostTracker",
+    "budget_alert",
+    "cost_summary",
+    "emit_cost_attributed",
+    "emit_cost_event",
+    # Tool 3 — Tool Call Inspector
+    "InspectorSession",
+    "ToolCallRecord",
+    "inspect_trace",
+    # Tool 4 — Tool Schema Builder
+    "tool",
+    "ToolRegistry",
+    "ToolSchema",
+    "ToolParameter",
+    "ToolValidationError",
+    "build_openai_schema",
+    "build_anthropic_schema",
+    "default_registry",
+    # Tool 5 — Retry and Fallback Engine
+    "retry",
+    "FallbackChain",
+    "CircuitBreaker",
+    "CircuitState",
+    "CostAwareRouter",
+    "AllProvidersFailedError",
+    "CircuitOpenError",
+    # Tool 6 — Semantic Cache Engine
+    "SemanticCache",
+    "cached",
+    "InMemoryBackend",
+    "SQLiteBackend",
+    "RedisBackend",
+    "CacheBackendError",
+    "CacheEntry",
+    # Tool 7 — SDK Instrumentation Linter
+    "LintError",
+    "run_checks",
 ]
 

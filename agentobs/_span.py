@@ -453,6 +453,16 @@ class SpanContextManager:
             if _s is not None:
                 _s._handle_export_error(exc)
 
+        # Auto-emit cost event when configured (Tool 2).
+        if self._span.cost is not None:
+            try:
+                from agentobs.config import get_config as _gc  # noqa: PLC0415
+                if _gc().auto_emit_cost:
+                    from agentobs.cost import emit_cost_event  # noqa: PLC0415
+                    emit_cost_event(self._span)
+            except Exception:  # NOSONAR — cost emission must never affect user code
+                pass
+
         # Do NOT suppress the original exception.
         return False
 

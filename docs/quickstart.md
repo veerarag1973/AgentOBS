@@ -233,12 +233,75 @@ print(f"Total cost   : ${m.total_cost_usd:.4f}")
 print(f"By model     : {m.cost_by_model}")
 ```
 
+---
+
+## Semantic cache (new in 1.0.7)
+
+Wrap any LLM function with `@cached` to skip the model entirely when a
+semantically similar prompt was recently answered:
+
+```python
+from agentobs.cache import cached, SQLiteBackend
+
+@cached(
+    threshold=0.92,          # cosine similarity cutoff
+    ttl=3600,                # seconds
+    backend=SQLiteBackend("cache.db"),
+    emit_events=True,        # emits llm.cache.hit/miss/written events
+)
+async def ask(prompt: str) -> str:
+    return await my_llm(prompt)
+
+# First call: cache miss → LLM runs
+reply1 = await ask("Summarise the AgentOBS RFC.")
+
+# Second call with a semantically near-identical prompt: instant cache hit
+reply2 = await ask("Give me a short summary of the AgentOBS RFC.")
+```
+
+See the full [Semantic Cache user guide](user_guide/cache.md) and
+[agentobs.cache API reference](api/cache.md).
+
+---
+
+## Lint your instrumentation (new in 1.0.7)
+
+`agentobs.lint` scans Python files for instrumentation mistakes — missing
+required fields, bare PII strings, LLM calls outside span contexts, etc.:
+
+```python
+from agentobs.lint import run_checks
+
+errors = run_checks(open("myapp/pipeline.py").read(), "myapp/pipeline.py")
+for e in errors:
+    print(f"{e.filename}:{e.line}:{e.col}: {e.code} {e.message}")
+```
+
+Or run the CLI over a whole directory:
+
+```bash
+python -m agentobs.lint myapp/
+# AO001  Event() missing required field 'payload'    pipeline.py:17
+# AO004  LLM call outside tracer span context        pipeline.py:53
+# 2 errors in 1 file.
+```
+
+The five AO-codes also appear in standard `flake8` / `ruff` output with no
+extra configuration after installing `agentobs`.
+
+See the full [Linting user guide](user_guide/linting.md) and
+[agentobs.lint API reference](api/lint.md).
+
+---
+
 ## Next steps
 
 - [User Guide](user_guide/index.md) — in-depth guide to all features
 - [Tracing API](user_guide/tracing.md) — `Trace`, `start_trace()`, async spans, `add_event()`
 - [Debugging & Visualization](user_guide/debugging.md) — `print_tree()`, `summary()`, `visualize()`
 - [Metrics & Analytics](user_guide/metrics.md) — `metrics.aggregate()`, `TraceStore`
+- [Semantic Cache](user_guide/cache.md) — `SemanticCache`, `@cached`, backends
+- [Linting & Static Analysis](user_guide/linting.md) — AO001–AO005, flake8 plugin, CI setup
 - [API Reference](api/index.md) — full API reference
 - [Namespace Payload Catalogue](namespaces/index.md) — typed payload catalogue
 - [CLI](cli.md) — `agentobs check-compat` command

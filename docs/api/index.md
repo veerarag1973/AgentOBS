@@ -29,6 +29,8 @@ exported at the top-level package under `agentobs`.
 - [ulid](ulid.md)
 - [exceptions](exceptions.md)
 - [models](models.md)
+- [cache](cache.md)
+- [lint](lint.md)
 
 ## Module summary
 
@@ -58,3 +60,5 @@ exported at the top-level package under `agentobs`.
 | `agentobs.ulid` | ULID generation and helpers |
 | `agentobs.exceptions` | Package-level exception hierarchy |
 | `agentobs.models` | Shared Pydantic base models |
+| `agentobs.cache` | `SemanticCache`, `@cached` decorator, `InMemoryBackend`, `SQLiteBackend`, `RedisBackend`, `CacheEntry`, `CacheBackendError` |
+| `agentobs.lint` | `run_checks()`, `LintError`, AO001–AO005 checks, `AgentOBSChecker` flake8 plugin, `python -m agentobs.lint` CLI |

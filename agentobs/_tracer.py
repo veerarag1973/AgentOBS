@@ -38,6 +38,7 @@ from agentobs._span import (
     SpanContextManager,
 )
 from agentobs._trace import Trace, start_trace as _start_trace
+from agentobs.trace import trace as _trace_decorator, _TraceDecorator
 
 __all__ = ["Tracer", "tracer"]
 
@@ -188,6 +189,54 @@ class Tracer:
             :class:`~agentobs._trace.Trace`
         """
         return _start_trace(agent_name, **attributes)
+
+    def trace(
+        self,
+        fn: Any = None,
+        *,
+        name: str | None = None,
+        model: str | None = None,
+        operation: str = "chat",
+        tool: bool = False,
+        capture_args: bool = False,
+        capture_return: bool = False,
+        attributes: dict[str, Any] | None = None,
+    ) -> Any:
+        """Decorator that instruments a function as an AgentOBS span.
+
+        Delegates to :func:`~agentobs.trace.trace`.  Provided as a convenience
+        method so callers who already hold a :class:`Tracer` reference do not
+        need a separate import::
+
+            @tracer.trace(name="my-step", model="gpt-4o")
+            def call_llm(prompt: str) -> str: ...
+
+            @tracer.trace(name="async-step")
+            async def async_step(x: int) -> dict: ...
+
+        Args:
+            fn:             Function to wrap when used bare (``@tracer.trace``).
+            name:           Span name (defaults to ``fn.__qualname__``).
+            model:          Model identifier string.
+            operation:      GenAI operation name (default ``"chat"``).
+            tool:           Mark as tool call; sets operation to ``"execute_tool"``.
+            capture_args:   Record call arguments as span attributes.
+            capture_return: Record return value as a span attribute.
+            attributes:     Static key-value attributes on every span.
+
+        Returns:
+            Decorated callable, or a single-argument decorator.
+        """
+        return _trace_decorator(
+            fn,
+            name=name,
+            model=model,
+            operation=operation,
+            tool=tool,
+            capture_args=capture_args,
+            capture_return=capture_return,
+            attributes=attributes,
+        )
 
 
 # ---------------------------------------------------------------------------

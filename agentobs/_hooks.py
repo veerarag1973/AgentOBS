@@ -49,7 +49,7 @@ from typing import Callable, Coroutine, TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from agentobs._span import Span
 
-__all__ = ["HookRegistry", "hooks"]
+__all__ = ["HookRegistry", "hooks", "HookFn"]
 
 # ---------------------------------------------------------------------------
 # Type aliases
@@ -67,7 +67,7 @@ _HOOK_TOOL_CALL = "tool_call"
 # Map span operation values → hook kind (for "start" hooks the same mapping is
 # used; the distinction between start and end is made by the context manager).
 _LLM_OPERATIONS = frozenset({"chat", "completion", "embedding", "chat_completion", "generate"})
-_TOOL_OPERATIONS = frozenset({"tool_call"})
+_TOOL_OPERATIONS = frozenset({"tool_call", "execute_tool"})
 _AGENT_OPERATIONS = frozenset({"invoke_agent", "agent"})
 
 
@@ -130,6 +130,8 @@ class HookRegistry:
             _HOOK_LLM_CALL: [],
             _HOOK_TOOL_CALL: [],
         }
+        # Universal span-end hooks: fire for EVERY span regardless of operation.
+        self._all_end_hooks: list[HookFn] = []
 
     # ------------------------------------------------------------------
     # Registration decorators / methods
@@ -163,6 +165,25 @@ class HookRegistry:
         """Register *fn* to fire on tool-call spans (start **and** end)."""
         with self._lock:
             self._hooks[_HOOK_TOOL_CALL].append(fn)
+        return fn
+
+    def on_span_end(self, fn: HookFn) -> HookFn:
+        """Register *fn* to fire when **any** span ends, regardless of operation type.
+
+        Unlike :meth:`on_agent_end`, :meth:`on_llm_call`, and :meth:`on_tool_call`
+        which only fire for operation-classified spans, this hook fires for every
+        :class:`~agentobs._span.Span` that exits via :class:`~agentobs._span.SpanContextManager`.
+
+        Primary use case: collecting all spans in test code via the
+        :func:`~agentobs.testing.captured_spans` pytest fixture.
+
+        Can be used as a decorator::
+
+            @hooks.on_span_end
+            def cb(span): ...
+        """
+        with self._lock:
+            self._all_end_hooks.append(fn)
         return fn
 
     # ------------------------------------------------------------------
@@ -204,12 +225,13 @@ class HookRegistry:
         return fn
 
     def clear(self) -> None:
-        """Unregister all synchronous and async hooks."""
+        """Unregister all synchronous, async, and universal hooks."""
         with self._lock:
             for key in self._hooks:
                 self._hooks[key].clear()
             for key in self._async_hooks:
                 self._async_hooks[key].clear()
+            self._all_end_hooks.clear()
 
     # ------------------------------------------------------------------
     # Internal fire helpers (called by SpanContextManager)
@@ -226,15 +248,33 @@ class HookRegistry:
             self._fire(_HOOK_AGENT_START, span)
 
     def _fire_end(self, span: "Span") -> None:
-        """Fire the appropriate end hooks for *span*."""
+        """Fire the appropriate end hooks for *span*, plus universal span-end hooks."""
         kind = _classify_span(span)
-        if kind is None:
-            return
-        if kind in (_HOOK_LLM_CALL, _HOOK_TOOL_CALL):
-            self._fire(kind, span)
-        elif kind == _HOOK_AGENT_START:
-            # Re-use agent_end bucket for end hooks.
-            self._fire(_HOOK_AGENT_END, span)
+        if kind is not None:
+            if kind in (_HOOK_LLM_CALL, _HOOK_TOOL_CALL):
+                self._fire(kind, span)
+            elif kind == _HOOK_AGENT_START:
+                # Re-use agent_end bucket for end hooks.
+                self._fire(_HOOK_AGENT_END, span)
+        # Always fire universal span-end hooks regardless of classification.
+        self._fire_all_end(span)
+
+    def _fire_all_end(self, span: "Span") -> None:
+        """Fire all universal span-end hooks registered via :meth:`on_span_end`."""
+        with self._lock:
+            callbacks = list(self._all_end_hooks)
+        for cb in callbacks:
+            try:
+                cb(span)
+            except Exception as exc:
+                try:
+                    warnings.warn(
+                        f"agentobs on_span_end hook error in {cb!r}: {exc}",
+                        UserWarning,
+                        stacklevel=2,
+                    )
+                except Exception:  # NOSONAR
+                    pass
 
     def _fire(self, kind: str, span: "Span") -> None:
         with self._lock:

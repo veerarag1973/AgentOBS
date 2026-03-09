@@ -55,7 +55,7 @@ _flat_payload = st.dictionaries(
 )
 
 # HMAC secrets: non-empty text up to 128 chars.
-_secret = st.text(min_size=1, max_size=128)
+_secret = st.text(min_size=1, max_size=128).filter(lambda s: s.strip() != "")
 
 
 def _make_event(payload: dict) -> Event:

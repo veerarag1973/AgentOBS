@@ -16,3 +16,5 @@ whichever features your use case requires.
 - [Migration Guide](migration.md)
 - [Debugging & Visualization](debugging.md) — `print_tree()`, `summary()`, `visualize()`, sampling
 - [Metrics & Analytics](metrics.md) — `metrics.aggregate()`, `MetricsSummary`, `TraceStore`
+- [Semantic Cache](cache.md) — `SemanticCache`, `@cached`, `InMemoryBackend`, `SQLiteBackend`, `RedisBackend`
+- [Linting & Static Analysis](linting.md) — `run_checks()`, AO001–AO005, flake8 plugin, CI integration

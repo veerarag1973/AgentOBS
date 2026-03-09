@@ -31,6 +31,8 @@ This index links to every documentation page in this folder.
 | [Migration Guide](user_guide/migration.md) | v2 migration roadmap, deprecation records, `v1_to_v2()` scaffold |
 | [Debugging & Visualization](user_guide/debugging.md) | `print_tree()`, `summary()`, `visualize()`, and sampling controls |
 | [Metrics & Analytics](user_guide/metrics.md) | `metrics.aggregate()`, `MetricsSummary`, `TraceStore`, `get_trace()` |
+| [Semantic Cache](user_guide/cache.md) | `SemanticCache`, `@cached` decorator, `InMemoryBackend`, `SQLiteBackend`, `RedisBackend` |
+| [Linting & Static Analysis](user_guide/linting.md) | `run_checks()`, AO001–AO005 error codes, flake8 plugin, CI integration |
 
 ---
 
@@ -62,6 +64,8 @@ This index links to every documentation page in this folder.
 | [ulid](api/ulid.md) | `agentobs.ulid` — ULID generation and helpers |
 | [exceptions](api/exceptions.md) | `agentobs.exceptions` — Exception hierarchy |
 | [models](api/models.md) | `agentobs.models` — Pydantic v2 model layer |
+| [cache](api/cache.md) | `agentobs.cache` — `SemanticCache`, `@cached`, backends, `CacheEntry`, `CacheBackendError` |
+| [lint](api/lint.md) | `agentobs.lint` — `run_checks()`, `LintError`, AO001–AO005, flake8 plugin, CLI |
 
 ---
 

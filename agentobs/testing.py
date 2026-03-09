@@ -41,11 +41,14 @@ from typing import TYPE_CHECKING, Any, Generator
 if TYPE_CHECKING:
     from agentobs.event import Event
     from agentobs._store import TraceStore
+    from agentobs._span import Span
 
 __all__ = [
     "MockExporter",
     "assert_event_schema_valid",
+    "assert_span_emitted",
     "capture_events",
+    "captured_spans",
     "trace_store",
 ]
 
@@ -263,3 +266,111 @@ def trace_store(max_traces: int = 100) -> Generator[TraceStore, None, None]:
 
     with _store_trace_store(max_traces=max_traces) as store:
         yield store
+
+
+# ---------------------------------------------------------------------------
+# captured_spans() pytest fixture
+# ---------------------------------------------------------------------------
+
+try:
+    import pytest as _pytest
+
+    @_pytest.fixture
+    def captured_spans() -> Generator[list[Span], None, None]:
+        """pytest fixture that captures all :class:`~agentobs._span.Span` objects
+        completed during a test, regardless of operation type.
+
+        Import this fixture in your test module (or ``conftest.py``) to make it
+        available::
+
+            from agentobs.testing import captured_spans  # re-export for pytest
+
+            def test_my_fn(captured_spans):
+                call_my_function()
+                assert any(s.name == "my-step" for s in captured_spans)
+
+        Each test gets an empty list; spans accumulate as the test runs.
+
+        Yields:
+            A live ``list[Span]`` populated as spans are completed.
+        """
+        from agentobs._hooks import hooks  # noqa: PLC0415
+
+        spans: list[Any] = []
+
+        def _cb(span: Any) -> None:
+            spans.append(span)
+
+        hooks.on_span_end(_cb)
+        try:
+            yield spans  # type: ignore[misc]
+        finally:
+            with hooks._lock:
+                try:
+                    hooks._all_end_hooks.remove(_cb)
+                except ValueError:
+                    pass
+
+except ImportError:
+    # pytest not installed — skip fixture definition (production environments).
+    pass
+
+
+# ---------------------------------------------------------------------------
+# assert_span_emitted()
+# ---------------------------------------------------------------------------
+
+
+def assert_span_emitted(
+    spans: list[Any],
+    *,
+    name: str,
+    model: str | None = None,
+    status: str | None = None,
+    operation: str | None = None,
+) -> Any:
+    """Assert that a span matching the given criteria appears in *spans*.
+
+    Typically used with the :func:`captured_spans` fixture.
+
+    Args:
+        spans:     List of :class:`~agentobs._span.Span` objects (from fixture).
+        name:      Required span name to match.
+        model:     When provided, also checks ``span.model == model``.
+        status:    When provided, also checks ``span.status == status``.
+        operation: When provided, also checks ``span.operation == operation``.
+
+    Returns:
+        The first matching :class:`~agentobs._span.Span`.
+
+    Raises:
+        AssertionError: If no span matches all criteria.
+
+    Example::
+
+        def test_llm_call(captured_spans):
+            run_agent()
+            assert_span_emitted(captured_spans, name="llm-call", model="gpt-4o")
+    """
+    for span in spans:
+        if span.name != name:
+            continue
+        if model is not None and span.model != model:
+            continue
+        if status is not None and span.status != status:
+            continue
+        if operation is not None and str(span.operation) != operation:
+            continue
+        return span
+
+    criteria = f"name={name!r}"
+    if model is not None:
+        criteria += f", model={model!r}"
+    if status is not None:
+        criteria += f", status={status!r}"
+    if operation is not None:
+        criteria += f", operation={operation!r}"
+    raise AssertionError(
+        f"No span matching {criteria} found in {len(spans)} captured span(s). "
+        f"Got: {[s.name for s in spans]}"
+    )

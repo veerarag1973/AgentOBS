@@ -94,6 +94,9 @@ docs = [
 [project.scripts]
 agentobs = "agentobs._cli:main"
 
+[project.entry-points."flake8.extension"]
+AO = "agentobs.lint._flake8:AgentOBSChecker"
+
 # ---------------------------------------------------------------------------
 # Hatch build
 # ---------------------------------------------------------------------------

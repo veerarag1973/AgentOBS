@@ -8,76 +8,98 @@ this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## 1.0.7 — 2026-03-09
 
-**RFC-0001 Full Conformance — Six Gaps Closed + Code-Quality Audit**
+**Instrumentation Engine — Seven Tools Complete**
 
-This release achieves **100% RFC-0001-AGENTOBS-Enterprise-2.0 conformance**.
-All six gaps identified in the internal conformance audit have been
-resolved. All changes are backward-compatible; no existing public API was
-removed.
+This release delivers the complete instrumentation engine planned in
+`AGENTOBS-IMPL-PLAN.md`. All seven tools are implemented, tested, and
+fully exported from the top-level `agentobs` namespace. All changes are
+backward-compatible; no existing public API was removed.
 
 ### Added
 
-- **`schemas/v2.0/schema.json`** — full Draft 2020-12 JSON Schema for the
-  v2.0 event envelope. Includes `$defs` for every value object
-  (`TokenUsage`, `ModelInfo`, `CostBreakdown`, `PricingTier`, `ToolCall`,
-  `SpanEvent`, `ReasoningStep`, `DecisionPoint`, `SpanPayload`,
-  `AgentStepPayload`, `AgentRunPayload`) and all enums (`GenAISystem`,
-  `GenAIOperationName`, `SpanKind`). (RFC-0001 §5, Appendix A)
-- **`agentobs.normalizer`** — new module exposing:
-  - `ProviderNormalizer` — `@runtime_checkable` structural `Protocol` that
-    provider integration modules must satisfy (RFC §10.4).
-  - `GenericNormalizer` — zero-dependency fallback that normalises
-    OpenAI-compatible, Anthropic-compatible, and raw `dict` response shapes
-    into `(TokenUsage, ModelInfo, CostBreakdown | None)` triples.
-  Both are exported at the top-level `agentobs` namespace.
-- **`agentobs.CONFORMANCE_PROFILE`** — new `Final[str]` constant set to
-  `"AGENTOBS-Enterprise-2.0"`, exported at the package level (RFC §1.5).
-- **`agentobs --version` / `-V` CLI flag** — the `agentobs` CLI entry-point
-  now supports `agentobs --version` which prints
-  `agentobs 1.0.7 [AGENTOBS-Enterprise-2.0]` (RFC §1.5).
-- **DoS input limits on `Event.from_dict()` and `Event.from_json()`** (RFC
-  §19.4) — both methods now accept:
-  - `max_size_bytes: int = 1_048_576` — rejects inputs exceeding 1 MiB.
-  - `max_payload_depth: int = 10` — rejects payloads nested more than 10
-    levels deep.
-  - `max_tags: int = 50` — rejects events with more than 50 tag keys.
-  All three limits are enforced before any field parsing.
-- **Property-based tests** (`tests/test_properties.py`) using `hypothesis`:
-  - `sign()` → `verify()` roundtrip for arbitrary payloads and secrets.
-  - Wrong-secret rejection (verify must return `False` with a different key).
-  - Canonical JSON determinism (`to_json()` byte-identical across calls).
-  - Sorted-keys invariant (envelope and payload keys are always sorted).
-  - ULID monotonic ordering and first-char `[0-7]` constraint (RFC §6.3).
+- **Tool 1 — `@trace()` decorator** (`agentobs.trace`, `agentobs.export.otlp_bridge`)
+  - `@trace(name, span_kind, attributes)` — wraps sync and async functions,
+    auto-emits `llm.trace.span` start/end events with timing and error capture.
+  - `SpanOTLPBridge`, `span_to_otlp_dict()` — converts agentobs span events
+    to OpenTelemetry proto-compatible dicts for OTLP/gRPC export.
 
-### Changed
+- **Tool 2 — Cost Calculation Engine** (`agentobs.cost`)
+  - `CostTracker` — tracks cumulative token costs per model across a session.
+  - `BudgetMonitor` — per-session USD budget with threshold alerts.
+  - `@budget_alert(limit_usd, on_exceed)` — fires a callback when the
+    session budget is exceeded.
+  - `emit_cost_event()`, `emit_cost_attributed()` — emit `llm.cost.*` events.
+  - `cost_summary()` — aggregate totals over a list of `CostRecord` objects.
+  - `CostRecord` — immutable dataclass capturing model, tokens, and USD cost.
 
-- **`agentobs.validate.load_schema()`** — now accepts an optional `version`
-  parameter (e.g. `"1.0"` or `"2.0"`), selects the matching schema file, and
-  caches each version independently. Defaults to `"2.0"`. Backward-
-  compatible — callers that passed no argument continue to work.
-- **`agentobs.validate.validate_event()`** — now reads `schema_version`
-  from the event envelope and selects the corresponding schema file
-  automatically (RFC §15.5). Falls through to `"2.0"` when absent.
-- **`agentobs.namespaces.trace.SpanPayload.__post_init__`** — added RFC
-  §8.1 invariant: `duration_ms` must equal
-  `(end_time_unix_nano − start_time_unix_nano) / 1_000_000 ± 1 ms`.
-- **`agentobs.namespaces.trace.AgentStepPayload.__post_init__`** — same
-  `duration_ms` invariant as `SpanPayload` (RFC §8.1).
+- **Tool 3 — Tool Call Inspector** (`agentobs.inspect`)
+  - `InspectorSession` — context manager that intercepts tool calls within a
+    trace and records their arguments, results, latency, and errors.
+  - `inspect_trace(trace_id)` — returns a list of `ToolCallRecord` objects
+    for a completed trace.
+  - `ToolCallRecord` — dataclass with `tool_name`, `arguments`, `result`,
+    `duration_ms`, `error`, and `span_id` fields.
 
-### Code-quality (SonarCloud)
+- **Tool 4 — Tool Schema Builder** (`agentobs.toolsmith`)
+  - `@tool(name, description, tags)` — registers a function as a typed tool
+    in the default registry; infers parameters from type annotations.
+  - `ToolRegistry` — manages a collection of `ToolSchema` objects; supports
+    `register()`, `get()`, `list_tools()`, and `unregister()`.
+  - `build_openai_schema(tool)` — renders a `ToolSchema` as an OpenAI
+    function-calling JSON object.
+  - `build_anthropic_schema(tool)` — renders a `ToolSchema` as an Anthropic
+    tool-use JSON object.
+  - `ToolSchema`, `ToolParameter`, `ToolValidationError`, `default_registry`.
 
-- **`agentobs/_stream.py`** — broad `except Exception` at the export-error
-  handler annotated with `# NOSONAR` (intentional, tested).
-- **`agentobs/event.py`** — `Event.__init__` 17-parameter signature
-  annotated with `# noqa: PLR0913  # NOSONAR` (schema-required).
-- **`agentobs/export/datadog.py`** — removed SonarCloud false-positive
-  commented-out-code finding.
-- **Tests** — resolved 36 SonarCloud maintainability findings (see prior
-  internal audit notes).
+- **Tool 5 — Retry and Fallback Engine** (`agentobs.retry`)
+  - `@retry(max_attempts, backoff, exceptions, on_retry)` — retries a
+    sync/async callable with exponential back-off; emits retry events.
+  - `FallbackChain(*providers)` — tries providers in order; falls back on
+    any exception.
+  - `CircuitBreaker(failure_threshold, recovery_timeout)` — open/close/
+    half-open state machine; raises `CircuitOpenError` when open.
+  - `CostAwareRouter(providers)` — routes each call to the cheapest
+    available provider given current `CostTracker` state.
+  - `AllProvidersFailedError`, `CircuitOpenError`, `CircuitState`.
+
+- **Tool 6 — Semantic Cache Engine** (`agentobs.cache`)
+  - `SemanticCache(backend, similarity_threshold, ttl_seconds, namespace,
+    embedder, max_size, emit_events)` — prompt deduplication via cosine
+    similarity; pluggable backends.
+  - `@cached(threshold, ttl, namespace, backend, tags, emit_events)` —
+    decorator for sync and async functions; supports bare `@cached` and
+    `@cached(...)` forms.
+  - `InMemoryBackend(max_size)` — LRU in-process store, thread-safe.
+  - `SQLiteBackend(db_path)` — persistent store using stdlib `sqlite3`.
+  - `RedisBackend(host, port, db, prefix)` — distributed store; requires
+    the optional `redis` package.
+  - Emits `llm.cache.hit`, `llm.cache.miss`, `llm.cache.written`,
+    `llm.cache.evicted` events when `emit_events=True`.
+  - `CacheBackendError`, `CacheEntry`.
+
+- **Tool 7 — SDK Instrumentation Linter** (`agentobs.lint`)
+  - `run_checks(source, filename) -> list[LintError]` — parses Python source
+    with `ast` and runs all AO-code checks.
+  - `LintError(code, message, filename, line, col)` — dataclass returned by
+    every check.
+  - **AO001** — `Event()` missing one of `event_type`, `source`, or `payload`.
+  - **AO002** — bare `str` literal passed to `actor_id`, `session_id`, or
+    `user_id` (should use `Redactable()`).
+  - **AO003** — `event_type=` string literal not present in registered
+    `EventType` values.
+  - **AO004** — LLM provider API call (`.chat.completions.create()` etc.)
+    outside a `with tracer.span()` / `agent_run()` context.
+  - **AO005** — `emit_span` / `emit_agent_*` called outside `agent_run()` /
+    `agent_step()` context.
+  - **flake8 plugin** — registered as `AO = "agentobs.lint._flake8:AgentOBSChecker"`
+    via `[project.entry-points."flake8.extension"]`; all five codes surfaced
+    natively in flake8 / ruff output.
+  - **CLI** — `python -m agentobs.lint [FILES_OR_DIRS...]`; exits `0` (clean)
+    or `1` (errors found).
 
 ### Test suite
 
-- **2 524 tests passing**, 42 skipped, ≥ 94 % line and branch coverage.
+- **3 032 tests passing**, 42 skipped, ≥ 92.84 % line and branch coverage.
 
 ---
 

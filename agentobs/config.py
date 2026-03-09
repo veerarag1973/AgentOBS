@@ -107,6 +107,16 @@ class AgentOBSConfig:
                              before the ``on_export_error`` policy is applied.
                              Retries use exponential back-off (0.5 s, 1 s, 2 s …).
                              Default: 3.
+        auto_emit_cost:      When ``True``, automatically emit a
+                             ``llm.cost.token.recorded`` event whenever a span
+                             closes with a non-``None`` ``cost`` attribute.
+                             Defaults to ``False``.
+        budget_usd_per_run:  When set, a budget alert is fired on the global
+                             :class:`~agentobs.cost.CostTracker` when any single
+                             agent run accumulates costs exceeding this value.
+                             ``None`` disables per-run budget checks.
+        budget_usd_per_day:  Rolling 24-hour USD budget cap on the global tracker.
+                             ``None`` disables the daily budget check.
     """
 
     exporter: str = "console"
@@ -125,6 +135,10 @@ class AgentOBSConfig:
     enable_trace_store: bool = False   # opt-in in-process trace store
     trace_store_size: int = 100        # ring buffer capacity (number of traces)
     export_max_retries: int = 3        # retry count for transient export failures
+    # Tool 2 — Cost Calculation Engine
+    auto_emit_cost: bool = False                # auto-emit llm.cost.token.recorded on span close
+    budget_usd_per_run: float | None = None     # per-run budget cap (USD)
+    budget_usd_per_day: float | None = None     # rolling 24-hour budget cap (USD)
 
 
 # ---------------------------------------------------------------------------
