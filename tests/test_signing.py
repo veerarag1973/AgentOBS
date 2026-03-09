@@ -755,7 +755,7 @@ class TestSigningError:
 @pytest.mark.security
 class TestSigningSecurity:
     def test_audit_stream_repr_never_exposes_secret(self) -> None:
-        secret = "ultra-sensitive-secret-xyz"  # noqa: S105
+        secret = "ultra-sensitive-secret-xyz"  # noqa: S105  # NOSONAR — intentional test value, not a real secret
         stream = AuditStream(org_secret=secret, source=_SOURCE)
         assert secret not in repr(stream)
         assert secret not in str(stream)

@@ -584,7 +584,7 @@ class TestInternalHelpers:
 @pytest.mark.security
 class TestRedactionSecurity:
     def test_redactable_repr_never_exposes_value(self) -> None:
-        secret = "top-secret-ssn-987-65-4321"  # noqa: S105
+        secret = "top-secret-ssn-987-65-4321"  # noqa: S105  # NOSONAR — intentional test value, not a real secret
         r = Redactable(secret, Sensitivity.PII, {"ssn"})
         assert secret not in repr(r)
         assert secret not in str(r)
@@ -595,7 +595,7 @@ class TestRedactionSecurity:
 
     def test_policy_apply_does_not_leak_value_in_metadata(self) -> None:
         """The __redacted_at / __redacted_by fields must not contain PII."""
-        secret = "876-54-3210-ssn-secret"  # noqa: S105
+        secret = "876-54-3210-ssn-secret"  # noqa: S105  # NOSONAR — intentional test value, not a real secret
         policy = RedactionPolicy(redacted_by="policy:test")
         event = _simple_event({"ssn": Redactable(secret, Sensitivity.PII)})
         result = policy.apply(event)
