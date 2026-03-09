@@ -55,14 +55,14 @@ def _read_lines(path: Path) -> list[str]:
 class TestModeValidation:
     def test_invalid_mode_raises_value_error(self) -> None:
         with pytest.raises(ValueError, match="mode"):
-            JSONLExporter("/tmp/test.jsonl", mode="r")  # noqa: S108
+            JSONLExporter("/tmp/test.jsonl", mode="r")  # noqa: S108  # NOSONAR
 
     def test_append_mode_accepted(self) -> None:
-        exp = JSONLExporter("/tmp/test.jsonl", mode="a")  # noqa: S108
+        exp = JSONLExporter("/tmp/test.jsonl", mode="a")  # noqa: S108  # NOSONAR
         assert exp._mode == "a"
 
     def test_write_mode_accepted(self) -> None:
-        exp = JSONLExporter("/tmp/test.jsonl", mode="w")  # noqa: S108
+        exp = JSONLExporter("/tmp/test.jsonl", mode="w")  # noqa: S108  # NOSONAR
         assert exp._mode == "w"
 
 
@@ -371,7 +371,7 @@ class TestJSONLRepr:
         assert "events.jsonl" in repr(exp)
 
     def test_repr_contains_mode(self) -> None:
-        exp = JSONLExporter("/tmp/e.jsonl", mode="w")  # noqa: S108
+        exp = JSONLExporter("/tmp/e.jsonl", mode="w")  # noqa: S108  # NOSONAR
         assert "'w'" in repr(exp)
 
     def test_repr_stdout(self) -> None:

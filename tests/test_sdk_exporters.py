@@ -114,7 +114,7 @@ class TestSyncJSONLExporter:
 
     def test_invalid_mode_raises(self) -> None:
         with pytest.raises(ValueError, match="mode"):
-            SyncJSONLExporter("/tmp/test.jsonl", mode="r")  # noqa: S108
+            SyncJSONLExporter("/tmp/test.jsonl", mode="r")  # noqa: S108  # NOSONAR
 
     def test_export_after_close_raises(self, tmp_path: Path) -> None:
         path = tmp_path / "closed.jsonl"

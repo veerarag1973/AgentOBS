@@ -16,7 +16,7 @@ You can also instantiate directly for testing::
     from agentobs.exporters.jsonl import SyncJSONLExporter
     from agentobs.event import Event, EventType, Tags
 
-    exporter = SyncJSONLExporter("/tmp/test.jsonl")
+    exporter = SyncJSONLExporter("/tmp/test.jsonl")  # noqa: S108  # NOSONAR
     exporter.export(my_event)
     exporter.close()
 """
